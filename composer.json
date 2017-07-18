@@ -11,6 +11,7 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "symfony/class-loader" : "2.8.1"
+        "symfony/class-loader" : "2.8.1",
+        "symfony/config"       : "3.0.1"
     }
 }
