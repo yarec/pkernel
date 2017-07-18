@@ -1,0 +1,14 @@
+{
+    "name": "yc/kernel",
+    "description": "...",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "a",
+            "email": "a@b.c"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {}
+}
