@@ -1,5 +1,5 @@
 {
-    "name": "yc/kernel",
+    "name": "yarec/pkernel",
     "description": "...",
     "type": "library",
     "license": "MIT",
