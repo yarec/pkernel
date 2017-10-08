@@ -1066,19 +1066,10 @@ return self::$oauth_cfg['host'] . $bh . ($at ? '?' . $at : '');
 }
 public static function pwd_login($du = null, $dv = null, $dw = null, $dx = null)
 {
-extract(self::$oauth_cfg);
-if ($du) {
-$dy = $du;
-}
-if ($dv) {
-$dz = $dv;
-}
-if ($dw) {
-$ef = $dw;
-}
-if ($dx) {
-$eg = $dx;
-}
+$dy = $du ? $du : self::$oauth_cfg['username'];
+$dz = $dv ? $dv : self::$oauth_cfg['passwd'];
+$ef = $dw ? $dw : self::$oauth_cfg['clientId'];
+$eg = $dx ? $dx : self::$oauth_cfg['clientSecret'];
 $t = ['client_id' => $ef, 'client_secret' => $eg, 'grant_type' => 'password', 'username' => $dy, 'password' => $dz];
 $eh = self::makeUrl(self::API['accessToken']);
 $ei = curl($eh, 10, 30, $t);
@@ -1093,16 +1084,9 @@ return $ek;
 }
 public static function code_login($el, $em = null, $dw = null, $dx = null)
 {
-extract(self::$oauth_cfg);
-if ($em) {
-$en = $em;
-}
-if ($dw) {
-$ef = $dw;
-}
-if ($dx) {
-$eg = $dx;
-}
+$en = $em ? $em : self::$oauth_cfg['redirectUri'];
+$ef = $dw ? $dw : self::$oauth_cfg['clientId'];
+$eg = $dx ? $dx : self::$oauth_cfg['clientSecret'];
 $t = ['client_id' => $ef, 'client_secret' => $eg, 'grant_type' => 'authorization_code', 'redirect_uri' => $en, 'code' => $el];
 $eh = self::makeUrl(self::API['accessToken']);
 $ei = curl($eh, 10, 30, $t);
@@ -1128,8 +1112,7 @@ return $ep;
 }
 public static function register_user($eo, $dv = '123456')
 {
-extract(self::$oauth_cfg);
-$bz = uc::pwd_login($dy, $dz, $ef, $eg);
+$bz = uc::pwd_login(self::$oauth_cfg['username'], self::$oauth_cfg['passwd'], self::$oauth_cfg['clientId'], self::$oauth_cfg['clientSecret']);
 $aw = $bz['data']['access_token'];
 return self::reg_user($aw, $eo, $dv);
 }
