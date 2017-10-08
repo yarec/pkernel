@@ -142,7 +142,7 @@ self::$_rest_prefix = \cfg::get_rest_prefix();
 self::$_uripath = uripath($s);
 $t = self::getReqData();
 if (!self::isAdminRest() && self::$_user) {
-$t['uid'] = self::$_user['id'];
+$t['uid'] = getArg(self::$_user, 'id');
 }
 $t['_uptm'] = date('Y-m-d H:i:s');
 $t['uniqid'] = uniqid();
@@ -354,7 +354,7 @@ public static function getUcTokenUser($ao)
 if (!$ao) {
 return null;
 }
-$ap = cache_user($ao);
+$ap = cache($ao);
 $aq = $ap['userinfo'] ? $ap['userinfo'] : null;
 $aq['id'] = $aq['uid'] = $aq['user_id'];
 return $aq;
@@ -385,11 +385,15 @@ $ad = self::getTokenUserBySso($ao);
 } else {
 debug("get from db");
 if ($ao) {
-$ad = \db::row($ar, ['token' => $ao]);
+$ad = cache($ao);
+$ad = $ad['user'];
 } else {
 if ($aw) {
 $ad = self::getAccessTokenUser($ar, $aw);
 }
+}
+if ($ad) {
+$ad['roles'] = [getArg($ad, 'role')];
 }
 }
 }
@@ -1502,6 +1506,7 @@ sendJson([]);
 public function beforeData($bj, $c)
 {
 $gj = \cfg::get('rest_maps', 'rest.yml');
+if (isset($gj[$bj])) {
 $m = $gj[$bj][$c];
 if ($m) {
 $gk = $m['xmap'];
@@ -1511,6 +1516,7 @@ foreach ($gk as $bm => $bn) {
 unset($t[$bn]);
 }
 \ctx::data($t);
+}
 }
 }
 }
@@ -1655,7 +1661,7 @@ info('set tags ok');
 if (isset($hv['join_cols'])) {
 foreach ($hv['join_cols'] as $hz => $ij) {
 $ik = getArg($ij, 'jtype', '1-1');
-$il = $ij['jkeys'];
+$il = getArg($ij, 'jkeys', []);
 if (is_string($ij['on'])) {
 $im = 'id';
 $in = $ij['on'];
@@ -1672,7 +1678,7 @@ $ip = \db::all($hz, ['AND' => [$in => $hx]]);
 foreach ($ip as $k => $iq) {
 info($iq);
 foreach ($ce as $bm => &$cq) {
-if ($cq[$im] == $iq[$in]) {
+if (isset($cq[$im]) && isset($iq[$in]) && $cq[$im] == $iq[$in]) {
 if ($ik == '1-1') {
 foreach ($il as $ir => $is) {
 $cq[$is] = $iq[$ir];
@@ -2525,6 +2531,11 @@ header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
 header("Pragma: no-cache");
 $pv->save('php://output');
 }
+function dd($t)
+{
+dump($t);
+exit;
+}
 function cacert_file()
 {
 return ROOT_PATH . "/fn/cacert.pem";
@@ -2792,16 +2803,27 @@ return true;
 return false;
 }
 use Symfony\Component\Cache\Simple\FilesystemCache;
-function cache($k, $bv, $rs = 10, $tw = 0)
+function cache($k, $bv = null, $rs = 10, $tw = 0)
 {
 $tx = new FilesystemCache();
+if ($bv) {
+if (is_callable($bv)) {
 if ($tw || !$tx->has($k)) {
 $t = $bv();
-debug("--------- no cache for [{$k}] ----------");
+debug("--------- fn: no cache for [{$k}] ----------");
 $tx->set($k, $t, $rs);
 } else {
 $t = $tx->get($k);
-debug("======= data from cache [{$k}] ========");
+debug("======= fn: data from cache [{$k}] ========");
+}
+} else {
+debug("--------- set cache for [{$k}] ---------- : " . json_encode($bv));
+$tx->set($k, $bv, $rs);
+$t = $bv;
+}
+} else {
+debug("--------- get cache for [{$k}] ---------- ");
+$t = $tx->get($k);
 }
 return $t;
 }
@@ -2901,8 +2923,6 @@ function refresh_token($bs, $as, $fw = '')
 {
 $abd = cguid();
 $t = ['id' => $as, 'token' => $abd];
-info("refresh_token: {$abd}");
-info($t);
 $ad = db::save($bs, $t);
 if ($fw) {
 setcookie("token", $ad['token'], time() + 3600 * 24 * 365, '/', $fw);
@@ -2913,9 +2933,7 @@ return $ad;
 }
 function user_login($app, $xy = 'username', $xz = 'password', $bs = 'user', $yz = 0)
 {
-$pt = $app->getContainer();
-$s = $pt->request;
-$t = $s->getParams();
+$t = ctx::data();
 $t = select_keys([$xy, $xz], $t);
 $abc = $t[$xy];
 $dz = $t[$xz];
@@ -2931,7 +2949,8 @@ list($dz, $rz) = hashsalt($dz, $rz);
 $dz = md5($dz);
 }
 if ($dz == $ad[$xz]) {
-return refresh_token($bs, $ad['id']);
+refresh_token($bs, $ad['id']);
+return $ad;
 }
 }
 return NULL;
@@ -3009,9 +3028,7 @@ ret($ad);
 }
 function cache_user($ao, $ad = null)
 {
-$ad = cache($ao, function () use($ad) {
-return $ad;
-}, 7200, $ad);
+cache($ao, $ad, 7200, $ad);
 $aq = null;
 if ($ad) {
 $aq = getArg($ad, 'userinfo');
