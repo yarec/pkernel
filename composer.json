@@ -11,9 +11,15 @@
     ],
     "minimum-stability": "dev",
     "require": {
+        "slim/slim"            : "~3.3",
+        "pavlakis/slim-cli"    : "^1.0",
+        "catfan/medoo"         : "~1.0",
         "symfony/class-loader" : "2.8.1",
         "symfony/config"       : "3.0.1",
-        "slim/slim"            : "~3.3",
+        "symfony/yaml"         : "^3.3",
+        "symfony/cache"        : "3.3.4",
+        "vlucas/valitron"      : "1.2.4",
+        "crysalead/dir"        : "^2.0",
         "monolog/monolog"      : "1.23.0"
     }
 }
