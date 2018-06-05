@@ -20,6 +20,7 @@
         "symfony/cache"        : "3.3.4",
         "vlucas/valitron"      : "1.2.4",
         "crysalead/dir"        : "^2.0",
+        "guzzlehttp/guzzle"    : "~6.0",
         "monolog/monolog"      : "1.23.0"
     }
 }
