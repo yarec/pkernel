@@ -1158,6 +1158,9 @@ self::$UC_HOST = $ej['host'];
 }
 public static function makeUrl($bp, $bd = '')
 {
+if (!self::$oauth_cfg) {
+self::init();
+}
 return self::$oauth_cfg['host'] . $bp . ($bd ? '?' . $bd : '');
 }
 public static function pwd_login($ek = null, $el = null, $em = null, $en = null)
