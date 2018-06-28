@@ -3538,8 +3538,8 @@ debug("!!!!!!--------- clear all cache ----------!!!!!!");
 }
 function baseModel($abo)
 {
-return <<<EOF
-
+return '<' . <<<EOF
+?php
 namespace Entities {
 class {$abo}
 {
