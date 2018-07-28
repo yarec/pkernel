@@ -659,7 +659,7 @@ return self::$_dbc['database_type'];
 public static function desc_sql($ch)
 {
 if (self::db_type() == 'mysql') {
-return "desc {$ch}";
+return "desc `{$ch}`";
 } else {
 if (self::db_type() == 'pgsql') {
 return "SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_NAME = '{$ch}'";
@@ -1949,7 +1949,7 @@ RestHelper::save_tag_items($bc, $jx, $bs, $br);
 }
 }
 info("---PUT---: {$br}/{$bs} " . json_encode($ab));
-$ab = db::tbl_data($br, RestHelper::data());
+$ab = db::tbl_data($br, $ab);
 $ab['id'] = $bs;
 db::save($br, $ab);
 return $ab;
@@ -3842,7 +3842,6 @@ list($ep, $abf) = hashsalt($ep, $abf);
 $ep = md5($ep);
 }
 if ($ep == $ak[$adr]) {
-refresh_token($ch, $ak['id']);
 return $ak;
 }
 }
