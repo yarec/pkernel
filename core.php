@@ -781,6 +781,7 @@ return $cj;
 public static function all($br, $cs = array(), $cx = '*', $cy = null)
 {
 $cs = self::getWhere($br, $cs);
+info($cs);
 if ($cy) {
 $cp = self::obj()->select($br, $cy, $cx, $cs);
 } else {
@@ -881,7 +882,7 @@ self::obj()->update($br, $ab, $cs);
 }
 public static function exec($cj)
 {
-return self::obj()->query($cj);
+return self::obj()->exec($cj);
 }
 public static function query($cj)
 {
@@ -1296,7 +1297,6 @@ $ab = ['access_token' => $bg, 'domain_name' => $fm, 'description' => $fn];
 $es = self::makeUrl(self::API['createDomain']);
 $et = curl($es, 10, 30, $ab);
 $v = json_decode($et, true);
-self::_set_id_user($v);
 return $v;
 }
 public static function user_domain($bg)
@@ -3651,7 +3651,7 @@ gen_schema($abz, $acd, $ace, $acs);
 function gen_corp_schema($ce, $acd)
 {
 \db::switch_dbc($ce);
-gen_dbc_scheam($acd);
+gen_dbc_schema($acd);
 }
 function buildcmd($ev = array())
 {
@@ -3694,45 +3694,47 @@ $acw = array_shift($acw);
 $acx = $acw['id'];
 $acy = db::all('sys_object_item', ['oid' => $acx]);
 $acz = ['Id'];
-$ade = [0.1];
+$ade = [0];
+$adf = [0.1];
 $cx = [['data' => 'id', 'renderer' => 'html', 'readOnly' => true]];
 foreach ($acy as $dk) {
 $br = $dk['name'];
 $abu = $dk['colname'] ? $dk['colname'] : $br;
 $c = $dk['type'];
 $lw = $dk['default'];
-$adf = $dk['col_width'];
-$adg = $dk['readonly'] ? ture : false;
-$adh = $dk['is_meta'];
-if ($adh) {
+$adg = $dk['col_width'];
+$adh = $dk['readonly'] ? ture : false;
+$adi = $dk['is_meta'];
+if ($adi) {
 $acz[] = $br;
-$ade[] = (double) $adf;
+$ade[$abu] = $br;
+$adf[] = (double) $adg;
 if (in_array($abu, array_keys($acv))) {
 $cx[] = $acv[$abu];
 } else {
-$cx[] = ['data' => $abu, 'renderer' => 'html', 'readOnly' => $adg];
+$cx[] = ['data' => $abu, 'renderer' => 'html', 'readOnly' => $adh];
 }
 }
 }
 $acz[] = "InTm";
 $acz[] = "St";
-$ade[] = 60;
-$ade[] = 10;
+$adf[] = 60;
+$adf[] = 10;
 $cx[] = ['data' => "_intm", 'renderer' => "html", 'readOnly' => true];
 $cx[] = ['data' => "_st", 'renderer' => "html"];
 $jr = ['objname' => $abr];
-return [$jr, $acz, $ade, $cx];
+return [$jr, $acz, $ade, $adf, $cx];
 }
 function getHotData($abr, $acv = array())
 {
 $acz[] = "InTm";
 $acz[] = "St";
-$ade[] = 60;
-$ade[] = 10;
+$adf[] = 60;
+$adf[] = 10;
 $cx[] = ['data' => "_intm", 'renderer' => "html", 'readOnly' => true];
 $cx[] = ['data' => "_st", 'renderer' => "html"];
 $jr = ['objname' => $abr];
-return [$jr, $acz, $ade, $cx];
+return [$jr, $acz, $adf, $cx];
 }
 function fixfn($bw)
 {
@@ -3757,36 +3759,36 @@ function rms($br, $x = 'rest')
 {
 return \ctx::container()->ms->getRest($br, $x);
 }
-function idxtree($adi, $adj)
+function idxtree($adj, $adk)
 {
 $is = [];
-$ab = \db::all($adi, ['pid' => $adj]);
-$adk = getKeyValues($ab, 'id');
-if ($adk) {
-foreach ($adk as $adj) {
-$is = array_merge($is, idxtree($adi, $adj));
+$ab = \db::all($adj, ['pid' => $adk]);
+$adl = getKeyValues($ab, 'id');
+if ($adl) {
+foreach ($adl as $adk) {
+$is = array_merge($is, idxtree($adj, $adk));
 }
 }
-return array_merge($adk, $is);
+return array_merge($adl, $is);
 }
-function treelist($adi, $adj)
+function treelist($adj, $adk)
 {
-$mz = \db::row($adi, ['id' => $adj]);
-$adl = $mz['sub_ids'];
-$adl = json_decode($adl, true);
-$adm = \db::all($adi, ['id' => $adl]);
-$adn = 0;
-foreach ($adm as $bu => $ado) {
-if ($ado['pid'] == $adj) {
-$adm[$bu]['pid'] = 0;
-$adn++;
+$mz = \db::row($adj, ['id' => $adk]);
+$adm = $mz['sub_ids'];
+$adm = json_decode($adm, true);
+$adn = \db::all($adj, ['id' => $adm]);
+$ado = 0;
+foreach ($adn as $bu => $adp) {
+if ($adp['pid'] == $adk) {
+$adn[$bu]['pid'] = 0;
+$ado++;
 }
 }
-if ($adn < 2) {
-$adm[] = [];
+if ($ado < 2) {
+$adn[] = [];
 }
-return $adm;
-return array_merge([$mz], $adm);
+return $adn;
+return array_merge([$mz], $adn);
 }
 function switch_domain($aw, $ce)
 {
@@ -3794,28 +3796,28 @@ $ak = cache($aw);
 $ak['userinfo']['corpid'] = $ce;
 cache_user($aw, $ak);
 $cf = ms('master')->get(['path' => '/master/corp/apps', 'data' => ['corpid' => $ce]]);
-$adp = $cf->json();
-$adp = getArg($adp, 'data');
-return $adp;
+$adq = $cf->json();
+$adq = getArg($adq, 'data');
+return $adq;
 }
-function auto_reg_user($adq = 'username', $adr = 'password', $ch = 'user', $ads = 0)
+function auto_reg_user($adr = 'username', $ads = 'password', $ch = 'user', $adt = 0)
 {
 $lo = randstr(10);
 $ep = randstr(6);
-$ab = ["{$adq}" => $lo, "{$adr}" => $ep, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
-if ($ads) {
+$ab = ["{$adr}" => $lo, "{$ads}" => $ep, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
+if ($adt) {
 list($ep, $abf) = hashsalt($ep);
-$ab[$adr] = $ep;
+$ab[$ads] = $ep;
 $ab['salt'] = $abf;
 } else {
-$ab[$adr] = md5($ep);
+$ab[$ads] = md5($ep);
 }
 return db::save($ch, $ab);
 }
 function refresh_token($ch, $bc, $gp = '')
 {
-$adt = cguid();
-$ab = ['id' => $bc, 'token' => $adt];
+$adu = cguid();
+$ab = ['id' => $bc, 'token' => $adu];
 $ak = db::save($ch, $ab);
 if ($gp) {
 setcookie("token", $ak['token'], time() + 3600 * 24 * 365, '/', $gp);
@@ -3824,34 +3826,34 @@ setcookie("token", $ak['token'], time() + 3600 * 24 * 365, '/');
 }
 return $ak;
 }
-function user_login($app, $adq = 'username', $adr = 'password', $ch = 'user', $ads = 0)
+function user_login($app, $adr = 'username', $ads = 'password', $ch = 'user', $adt = 0)
 {
 $ab = ctx::data();
-$ab = select_keys([$adq, $adr], $ab);
-$lo = $ab[$adq];
-$ep = $ab[$adr];
+$ab = select_keys([$adr, $ads], $ab);
+$lo = $ab[$adr];
+$ep = $ab[$ads];
 if (!$lo || !$ep) {
 return NULL;
 }
-$ak = \db::row($ch, ["{$adq}" => $lo]);
+$ak = \db::row($ch, ["{$adr}" => $lo]);
 if ($ak) {
-if ($ads) {
+if ($adt) {
 $abf = $ak['salt'];
 list($ep, $abf) = hashsalt($ep, $abf);
 } else {
 $ep = md5($ep);
 }
-if ($ep == $ak[$adr]) {
+if ($ep == $ak[$ads]) {
 return $ak;
 }
 }
 return NULL;
 }
-function uc_auto_reg_user($eo, $adu)
+function uc_auto_reg_user($eo, $adv)
 {
 $v = \uc::find_user(['username' => $eo]);
 if ($v['code'] != 0) {
-$v = uc::reg_user($eo, $adu);
+$v = uc::reg_user($eo, $adv);
 } else {
 $v = ['code' => 1, 'data' => []];
 }
@@ -3862,10 +3864,10 @@ function uc_login_data($bg)
 $ay = uc::user_info($bg);
 $ay = $ay['data'];
 $fl = [];
-$adv = uc::user_role($bg, 1);
+$adw = uc::user_role($bg, 1);
 $lq = [];
-if ($adv['code'] == 0) {
-$lq = $adv['data']['roles'];
+if ($adw['code'] == 0) {
+$lq = $adw['data']['roles'];
 if ($lq) {
 foreach ($lq as $k => $fj) {
 $fl[] = $fj['name'];
@@ -3873,19 +3875,19 @@ $fl[] = $fj['name'];
 }
 }
 $ay['roles'] = $fl;
-$adw = uc::user_domain($bg);
-$ay['corps'] = array_values($adw['data']);
+$adx = uc::user_domain($bg);
+$ay['corps'] = array_values($adx['data']);
 return [$bg, $ay, $lq];
 }
-function uc_user_login($app, $adq = 'username', $adr = 'password')
+function uc_user_login($app, $adr = 'username', $ads = 'password')
 {
 log_time("uc_user_login start");
 $tv = $app->getContainer();
 $z = $tv->request;
 $ab = $z->getParams();
-$ab = select_keys([$adq, $adr], $ab);
-$lo = $ab[$adq];
-$ep = $ab[$adr];
+$ab = select_keys([$adr, $ads], $ab);
+$lo = $ab[$adr];
+$ep = $ab[$ads];
 if (!$lo || !$ep) {
 return NULL;
 }
@@ -3900,20 +3902,20 @@ return uc_login_data($bg);
 function check_auth($app)
 {
 $z = req();
-$adx = false;
-$ady = cfg::get('public_paths');
+$ady = false;
+$adz = cfg::get('public_paths');
 $fs = $z->getUri()->getPath();
 if ($fs == '/') {
-$adx = true;
+$ady = true;
 } else {
-foreach ($ady as $bp) {
+foreach ($adz as $bp) {
 if (startWith($fs, $bp)) {
-$adx = true;
+$ady = true;
 }
 }
 }
-info("check_auth: {$adx} {$fs}");
-if (!$adx) {
+info("check_auth: {$ady} {$fs}");
+if (!$ady) {
 if (is_weixin()) {
 $gq = $_SERVER['REQUEST_URI'];
 header('Location: /api/auth/wechat?_r=' . $gq);
@@ -3921,15 +3923,15 @@ header('Location: /api/auth/wechat?_r=' . $gq);
 ret(1, 'auth error');
 }
 }
-function extractUserData($adz)
+function extractUserData($aef)
 {
-return ['githubLogin' => $adz['login'], 'githubName' => $adz['name'], 'githubId' => $adz['id'], 'repos_url' => $adz['repos_url'], 'avatar_url' => $adz['avatar_url'], '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
+return ['githubLogin' => $aef['login'], 'githubName' => $aef['name'], 'githubId' => $aef['id'], 'repos_url' => $aef['repos_url'], 'avatar_url' => $aef['avatar_url'], '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
 }
-function output_user($ak, $aef = false)
+function output_user($ak, $aeg = false)
 {
 unset($ak['passwd']);
 unset($ak['salt']);
-if (!$aef) {
+if (!$aeg) {
 unset($ak['token']);
 }
 unset($ak['access-token']);
@@ -3950,14 +3952,14 @@ $_SERVER['REQUEST_URI'] = '/pub/psysh';
 }
 $app = new \Slim\App();
 ctx::app($app);
-function tpl($bn, $aeg = '.html')
+function tpl($bn, $aeh = '.html')
 {
-$bn = $bn . $aeg;
-$aeh = cfg::get('tpl_prefix');
-$aei = "{$aeh['pc']}/{$bn}";
-$aej = "{$aeh['mobile']}/{$bn}";
-info("tpl: {$aei} | {$aej}");
-return isMobile() ? $aej : $aei;
+$bn = $bn . $aeh;
+$aei = cfg::get('tpl_prefix');
+$aej = "{$aei['pc']}/{$bn}";
+$aek = "{$aei['mobile']}/{$bn}";
+info("tpl: {$aej} | {$aek}");
+return isMobile() ? $aek : $aej;
 }
 function req()
 {
@@ -3968,9 +3970,9 @@ function get($br, $lw = '')
 $z = req();
 $u = $z->getParam($br, $lw);
 if ($u == $lw) {
-$aek = ctx::gets();
-if (isset($aek[$br])) {
-return $aek[$br];
+$ael = ctx::gets();
+if (isset($ael[$br])) {
+return $ael[$br];
 }
 }
 return $u;
@@ -4013,11 +4015,11 @@ return $fs;
 }
 function host_str($rz)
 {
-$ael = '';
+$aem = '';
 if (isset($_SERVER['HTTP_HOST'])) {
-$ael = $_SERVER['HTTP_HOST'];
+$aem = $_SERVER['HTTP_HOST'];
 }
-return " [ {$ael} ] " . $rz;
+return " [ {$aem} ] " . $rz;
 }
 function debug($rz)
 {
@@ -4043,12 +4045,12 @@ $rz = format_log_str($rz, getCallerStr(3));
 ctx::logger()->info(host_str($rz));
 }
 }
-function format_log_str($rz, $aem = '')
+function format_log_str($rz, $aen = '')
 {
 if (is_array($rz)) {
 $rz = json_encode($rz);
 }
-return "{$rz} [ ::{$aem} ]";
+return "{$rz} [ ::{$aen} ]";
 }
 function ck_owner($dk)
 {
@@ -4067,24 +4069,24 @@ function log_time($bt = '', $abj = 0)
 {
 global $__log_time__, $__log_begin_time__;
 list($wy, $wz) = explode(" ", microtime());
-$aen = (double) $wy + (double) $wz;
+$aeo = (double) $wy + (double) $wz;
 if (!$__log_time__) {
-$__log_begin_time__ = $aen;
-$__log_time__ = $aen;
+$__log_begin_time__ = $aeo;
+$__log_time__ = $aeo;
 $bp = uripath();
 debug("usetime: --- {$bp} ---");
-return $aen;
+return $aeo;
 }
 if ($abj && $abj == 'begin') {
-$aeo = $__log_begin_time__;
+$aep = $__log_begin_time__;
 } else {
-$aeo = $abj ? $abj : $__log_time__;
+$aep = $abj ? $abj : $__log_time__;
 }
-$abl = $aen - $aeo;
+$abl = $aeo - $aep;
 $abl *= 1000;
 debug("usetime: ---  {$abl} {$bt}  ---");
-$__log_time__ = $aen;
-return $aen;
+$__log_time__ = $aeo;
+return $aeo;
 }
 use core\Service as ms;
 $p = $app->getContainer();
@@ -4095,25 +4097,25 @@ return $bo;
 };
 $p['logger'] = function ($tv) {
 if (is_docker_env()) {
-$aep = '/ws/log/app.log';
+$aeq = '/ws/log/app.log';
 } else {
-$aeq = cfg::get('logdir');
-if ($aeq) {
-$aep = $aeq . '/app.log';
+$aer = cfg::get('logdir');
+if ($aer) {
+$aeq = $aer . '/app.log';
 } else {
-$aep = __DIR__ . '/../app.log';
+$aeq = __DIR__ . '/../app.log';
 }
 }
-$aer = ['name' => '', 'path' => $aep];
-$aes = new \Monolog\Logger($aer['name']);
-$aes->pushProcessor(new \Monolog\Processor\UidProcessor());
-$aet = \cfg::get('app');
-$ns = isset($aet['log_level']) ? $aet['log_level'] : '';
+$aes = ['name' => '', 'path' => $aeq];
+$aet = new \Monolog\Logger($aes['name']);
+$aet->pushProcessor(new \Monolog\Processor\UidProcessor());
+$aeu = \cfg::get('app');
+$ns = isset($aeu['log_level']) ? $aeu['log_level'] : '';
 if (!$ns) {
 $ns = \Monolog\Logger::INFO;
 }
-$aes->pushHandler(new \Monolog\Handler\StreamHandler($aer['path'], $ns));
-return $aes;
+$aet->pushHandler(new \Monolog\Handler\StreamHandler($aes['path'], $ns));
+return $aet;
 };
 log_time();
 unset($app->getContainer()['phpErrorHandler']);
@@ -4138,18 +4140,18 @@ return preg_match("/^1[3|4|5|7|8]\\d{9}\$/", $l) ? TRUE : FALSE;
 log_time("DEPS END");
 log_time("ROUTES BEGIN");
 use Lead\Dir\Dir as dir;
-$aeu = ROOT_PATH . '/routes';
-if (folder_exist($aeu)) {
-$q = dir::scan($aeu, ['type' => 'file']);
+$aev = ROOT_PATH . '/routes';
+if (folder_exist($aev)) {
+$q = dir::scan($aev, ['type' => 'file']);
 foreach ($q as $r) {
 if (basename($r) != 'routes.php' && !endWith($r, '.DS_Store')) {
 require_once $r;
 }
 }
 }
-$aev = cfg::get('opt_route_list');
-if ($aev) {
-foreach ($aev as $aj) {
+$aew = cfg::get('opt_route_list');
+if ($aew) {
+foreach ($aew as $aj) {
 info("def route {$aj}");
 $app->options($aj, function () {
 ret([]);
@@ -4166,13 +4168,13 @@ cache_clear();
 sendJSON([]);
 });
 if (cfg::get('enable_blockly')) {
-$aew = cache('blockly_routes_key', function () {
+$aex = cache('blockly_routes_key', function () {
 return db::all('sys_blockly', ['AND' => ['code_type' => 'route']]);
 }, 86400, 1);
-foreach ($aew as $aex) {
-$aey = get('nb');
-if ($aey != 1) {
-@eval($aex['phpcode']);
+foreach ($aex as $aey) {
+$aez = get('nb');
+if ($aez != 1) {
+@eval($aey['phpcode']);
 }
 }
 }
@@ -4190,83 +4192,99 @@ ret([]);
 });
 $app->get("/hot/{$br}", function () use($dp, $br) {
 $abr = $dp['objname'];
-$aez = $br;
-$cp = rest::getList($aez);
+$afg = $br;
+$cp = rest::getList($afg);
 $acv = isset($dp['cols_map']) ? $dp['cols_map'] : [];
-list($jr, $acz, $ade, $cx) = getMetaData($abr, $acv);
-$ade[0] = 10;
-$v['data'] = ['meta' => $jr, 'list' => $cp['data'], 'colHeaders' => $acz, 'colWidths' => $ade, 'cols' => $cx];
+list($jr, $acz, $ade, $adf, $cx) = getMetaData($abr, $acv);
+$adf[0] = 10;
+$v['data'] = ['meta' => $jr, 'list' => $cp['data'], 'colHeaders' => $acz, 'colWidths' => $adf, 'cols' => $cx];
 ret($v);
 });
 $app->get("/hot/{$br}/param", function () use($dp, $br) {
 $abr = $dp['objname'];
-$aez = $br;
-$cp = rest::getList($aez);
-list($acz, $ade, $cx) = getHotColMap1($aez);
+$afg = $br;
+$cp = rest::getList($afg);
+list($acz, $afh, $ade, $adf, $cx) = getHotColMap1($afg);
 $jr = ['objname' => $abr];
-$ade[0] = 10;
-$v['data'] = ['meta' => $jr, 'list' => [], 'colHeaders' => $acz, 'colWidths' => $ade, 'cols' => $cx];
+$adf[0] = 10;
+$v['data'] = ['meta' => $jr, 'list' => [], 'colHeaders' => $acz, 'colHeaderDatas' => $ade, 'colHeaderGroupDatas' => $afh, 'colWidths' => $adf, 'cols' => $cx];
 ret($v);
 });
 $app->post("/hot/{$br}", function () use($dp, $br) {
-$aez = $br;
-$cp = rest::postData($aez);
+$afg = $br;
+$cp = rest::postData($afg);
 ret($cp);
 });
 $app->put("/hot/{$br}/{id}", function ($z, $bl, $mo) use($dp, $br) {
-$aez = $br;
+$afg = $br;
 $ab = ctx::data();
 if (isset($ab['trans-word']) && isset($ab[$ab['trans-from']])) {
-$afg = $ab['trans-from'];
-$afh = $ab['trans-to'];
-$u = util\Pinyin::get($ab[$afg]);
-$ab[$afh] = $u;
+$afi = $ab['trans-from'];
+$afj = $ab['trans-to'];
+$u = util\Pinyin::get($ab[$afi]);
+$ab[$afj] = $u;
 }
 ctx::data($ab);
-$cp = rest::putData($aez, $mo['id']);
+$cp = rest::putData($afg, $mo['id']);
 ret($cp);
 });
 }
-function getHotColMap1($aez)
+function getHotColMap1($afg)
 {
-$afi = $aez . '_param';
-$afj = $aez . '_opt';
-$afk = $aez . '_opt_ext';
+$afk = $afg . '_param';
+$afl = $afg . '_opt';
+$afm = $afg . '_opt_ext';
 ctx::pagesize(50);
-ctx::gets('pid', 6);
-$cp = rest::getList($afi);
-$afl = getKeyValues($cp['data'], 'id');
+$cp = rest::getList($afk);
+$afn = getKeyValues($cp['data'], 'id');
 $bd = indexArray($cp['data'], 'id');
-$ev = db::all($afj, ['AND' => ['pid' => $afl]]);
+$ev = db::all($afl, ['AND' => ['pid' => $afn]]);
 $ev = indexArray($ev, 'id');
-$afl = array_keys($ev);
-$afm = db::all($afk, ['AND' => ['pid' => $afl]]);
-$afm = groupArray($afm, 'pid');
+$afn = array_keys($ev);
+$afo = db::all($afm, ['AND' => ['pid' => $afn]]);
+$afo = groupArray($afo, 'pid');
 $acz = [];
 $ade = [];
+$afh = [];
+$adf = [];
 $cx = [];
-foreach ($bd as $k => $afn) {
-$acz[] = $afn['label'];
-$ade[] = $afn['width'];
-$cx[$afn['name']] = ['data' => $afn['name'], 'renderer' => 'html'];
+foreach ($bd as $k => $afp) {
+$acz[] = $afp['label'];
+$afh[$afp['name']] = $afp['group_name'] ? $afp['group_name'] : $afp['label'];
+$ade[$afp['name']] = $afp['label'];
+$adf[] = $afp['width'];
+$cx[$afp['name']] = ['data' => $afp['name'], 'renderer' => 'html'];
 }
-foreach ($afm as $k => $ej) {
-$afo = '';
-$adj = 0;
-$afp = $ev[$k];
-$afq = $afp['pid'];
-$afn = $bd[$afq];
-$afr = $afn['label'];
-$afo = $afn['name'];
-if ($adj) {
+foreach ($afo as $k => $ej) {
+$afq = '';
+$adk = 0;
+$afr = $ev[$k];
+$afs = $afr['pid'];
+$afp = $bd[$afs];
+$aft = $afp['label'];
+$afq = $afp['name'];
+$afu = $afp['type'];
+if ($adk) {
 }
-if ($afo) {
-$cx[$afo] = ['data' => $afo, 'type' => 'autocomplete', 'strict' => false, 'source' => getKeyValues($ej, 'option')];
+if ($afq) {
+$cl = ['data' => $afq, 'type' => 'autocomplete', 'strict' => false, 'source' => array_values(getKeyValues($ej, 'option'))];
+if ($afu == 'select2') {
+$cl['editor'] = 'select2';
+$afv = [];
+foreach ($ej as $afw) {
+$dk['id'] = $afw['id'];
+$dk['text'] = $afw['option'];
+$afv[] = $dk;
+}
+$cl['select2Options'] = ['data' => $afv, 'dropdownAutoWidth' => true, 'width' => 'resolve'];
+unset($cl['type']);
+}
+$cx[$afq] = $cl;
 }
 }
 $cx = array_values($cx);
-return [$acz, $ade, $cx];
-$ab = ['rows' => $cp, 'pids' => $afl, 'props' => $afs, 'opts' => $ev, 'cols_map' => $acv];
+return [$acz, $afh, $ade, $adf, $cx];
+$ab = ['rows' => $cp, 'pids' => $afn, 'props' => $afx, 'opts' => $ev, 'cols_map' => $acv];
 $acv = [];
 return $acv;
 }
@@ -4276,23 +4294,23 @@ use db\Rest as rest;
 use util\Pinyin;
 function def_hot_opt_rest($app, $br, $dp = array())
 {
-$aez = $br;
-$aft = "{$br}_ext";
-$app->get("/hot/{$br}", function () use($aez, $aft) {
+$afg = $br;
+$afy = "{$br}_ext";
+$app->get("/hot/{$br}", function () use($afg, $afy) {
 $km = get('oid');
-$adj = get('pid');
-$cj = "select * from `{$aez}` pp join `{$aft}` pv\n              on pp.id = pv.`pid`\n              where pp.oid={$km} and pp.pid={$adj}";
+$adk = get('pid');
+$cj = "select * from `{$afg}` pp join `{$afy}` pv\n              on pp.id = pv.`pid`\n              where pp.oid={$km} and pp.pid={$adk}";
 $cp = db::query($cj);
 $ab = groupArray($cp, 'name');
 $acz = ['Id', 'Oid', 'RowNum'];
-$ade = [5, 5, 5];
+$adf = [5, 5, 5];
 $cx = [['data' => 'id', 'renderer' => 'html', 'readOnly' => true], ['data' => 'oid', 'renderer' => 'html', 'readOnly' => true], ['data' => '_rownum', 'renderer' => 'html', 'readOnly' => true]];
 $ai = [];
 foreach ($ab as $bu => $bv) {
 $acz[] = $bv[0]['label'];
-$ade[] = $bv[0]['col_width'];
+$adf[] = $bv[0]['col_width'];
 $cx[] = ['data' => $bu, 'renderer' => 'html'];
-$afu = [];
+$afz = [];
 foreach ($bv as $k => $dk) {
 $ai[$dk['_rownum']][$bu] = $dk['option'];
 if ($bu == 'value') {
@@ -4305,18 +4323,18 @@ $ai[$dk['_rownum']]['_rownum'] = $dk['_rownum'];
 }
 }
 $ai = array_values($ai);
-$v['data'] = ['list' => $ai, 'colHeaders' => $acz, 'colWidths' => $ade, 'cols' => $cx];
+$v['data'] = ['list' => $ai, 'colHeaders' => $acz, 'colWidths' => $adf, 'cols' => $cx];
 ret($v);
 });
-$app->get("/hot/{$br}_addprop", function () use($aez, $aft) {
+$app->get("/hot/{$br}_addprop", function () use($afg, $afy) {
 $km = get('oid');
-$adj = get('pid');
-$afv = get('propname');
-if ($afv != 'value' && !checkOptPropVal($km, $adj, 'value', $aez, $aft)) {
-addOptProp($km, $adj, 'value', $aez, $aft);
+$adk = get('pid');
+$agh = get('propname');
+if ($agh != 'value' && !checkOptPropVal($km, $adk, 'value', $afg, $afy)) {
+addOptProp($km, $adk, 'value', $afg, $afy);
 }
-if (!checkOptPropVal($km, $adj, $afv, $aez, $aft)) {
-addOptProp($km, $adj, $afv, $aez, $aft);
+if (!checkOptPropVal($km, $adk, $agh, $afg, $afy)) {
+addOptProp($km, $adk, $agh, $afg, $afy);
 }
 ret([11]);
 });
@@ -4326,76 +4344,76 @@ ret([]);
 $app->options("/hot/{$br}/{id}", function () {
 ret([]);
 });
-$app->post("/hot/{$br}", function () use($aez, $aft) {
+$app->post("/hot/{$br}", function () use($afg, $afy) {
 $ab = ctx::data();
-$adj = $ab['pid'];
+$adk = $ab['pid'];
 $km = $ab['oid'];
-$afw = getArg($ab, '_rownum');
-$afx = db::row($aez, ['AND' => ['oid' => $km, 'pid' => $adj, 'name' => 'value']]);
-if (!$afx) {
-addOptProp($km, $adj, 'value', $aez, $aft);
+$agi = getArg($ab, '_rownum');
+$agj = db::row($afg, ['AND' => ['oid' => $km, 'pid' => $adk, 'name' => 'value']]);
+if (!$agj) {
+addOptProp($km, $adk, 'value', $afg, $afy);
 }
-$afy = $afx['id'];
-$afz = db::obj()->max($aft, '_rownum', ['pid' => $afy]);
-$ab = ['oid' => $km, 'pid' => $afy, '_rownum' => $afz + 1];
-db::save($aft, $ab);
-$v = ['oid' => $km, '_rownum' => $afw, 'prop' => $afx, 'maxrow' => $afz];
+$agk = $agj['id'];
+$agl = db::obj()->max($afy, '_rownum', ['pid' => $agk]);
+$ab = ['oid' => $km, 'pid' => $agk, '_rownum' => $agl + 1];
+db::save($afy, $ab);
+$v = ['oid' => $km, '_rownum' => $agi, 'prop' => $agj, 'maxrow' => $agl];
 ret($v);
 });
-$app->put("/hot/{$br}/{id}", function ($z, $bl, $mo) use($aft, $aez) {
+$app->put("/hot/{$br}/{id}", function ($z, $bl, $mo) use($afy, $afg) {
 $ab = ctx::data();
-$adj = $ab['pid'];
+$adk = $ab['pid'];
 $km = $ab['oid'];
-$afw = $ab['_rownum'];
-$afw = getArg($ab, '_rownum');
+$agi = $ab['_rownum'];
+$agi = getArg($ab, '_rownum');
 $aw = $ab['token'];
 $bc = $ab['uid'];
 $dk = dissoc($ab, ['oid', 'pid', '_rownum', '_uptm', 'uniqid', 'token', 'uid']);
 debug($dk);
 $k = key($dk);
 $u = $dk[$k];
-$afx = db::row($aez, ['AND' => ['pid' => $adj, 'oid' => $km, 'name' => $k]]);
-info("{$adj} {$km} {$k}");
-$afy = $afx['id'];
-$agh = db::obj()->has($aft, ['AND' => ['pid' => $afy, '_rownum' => $afw]]);
-if ($agh) {
+$agj = db::row($afg, ['AND' => ['pid' => $adk, 'oid' => $km, 'name' => $k]]);
+info("{$adk} {$km} {$k}");
+$agk = $agj['id'];
+$agm = db::obj()->has($afy, ['AND' => ['pid' => $agk, '_rownum' => $agi]]);
+if ($agm) {
 debug("has cell ...");
-$cj = "update {$aft} set `option`='{$u}' where _rownum={$afw} and pid={$afy}";
+$cj = "update {$afy} set `option`='{$u}' where _rownum={$agi} and pid={$agk}";
 debug($cj);
 db::exec($cj);
 } else {
 debug("has no cell ...");
-$ab = ['oid' => $km, 'pid' => $afy, '_rownum' => $afw, 'option' => $u];
-db::save($aft, $ab);
+$ab = ['oid' => $km, 'pid' => $agk, '_rownum' => $agi, 'option' => $u];
+db::save($afy, $ab);
 }
-$v = ['item' => $dk, 'oid' => $km, '_rownum' => $afw, 'key' => $k, 'val' => $u, 'prop' => $afx, 'sql' => $cj];
+$v = ['item' => $dk, 'oid' => $km, '_rownum' => $agi, 'key' => $k, 'val' => $u, 'prop' => $agj, 'sql' => $cj];
 ret($v);
 });
 }
-function checkOptPropVal($km, $adj, $br, $aez, $aft)
+function checkOptPropVal($km, $adk, $br, $afg, $afy)
 {
-return db::obj()->has($aez, ['AND' => ['name' => $br, 'oid' => $km, 'pid' => $adj]]);
+return db::obj()->has($afg, ['AND' => ['name' => $br, 'oid' => $km, 'pid' => $adk]]);
 }
-function addOptProp($km, $adj, $afv, $aez, $aft)
+function addOptProp($km, $adk, $agh, $afg, $afy)
 {
-$br = Pinyin::get($afv);
-$ab = ['oid' => $km, 'pid' => $adj, 'label' => $afv, 'name' => $br];
-$afx = db::save($aez, $ab);
-$ab = ['_rownum' => 1, 'oid' => $km, 'pid' => $afx['id']];
-db::save($aft, $ab);
-return $afx;
+$br = Pinyin::get($agh);
+$ab = ['oid' => $km, 'pid' => $adk, 'label' => $agh, 'name' => $br];
+$agj = db::save($afg, $ab);
+$ab = ['_rownum' => 1, 'oid' => $km, 'pid' => $agj['id']];
+db::save($afy, $ab);
+return $agj;
 }
 }
 namespace {
 log_time("MID BEGIN");
 $app->add(new \mid\TwigMid());
 $app->add(new \mid\RestMid());
-$agi = \cfg::load('mid');
-if ($agi) {
-foreach ($agi as $bu => $m) {
-$agj = "\\{$bu}";
-debug("load mid: {$agj}");
-$app->add(new $agj());
+$agn = \cfg::load('mid');
+if ($agn) {
+foreach ($agn as $bu => $m) {
+$ago = "\\{$bu}";
+debug("load mid: {$ago}");
+$app->add(new $ago());
 }
 }
 if (file_exists(ROOT_PATH . DS . 'lib/mid/MyAuthMid.php')) {
