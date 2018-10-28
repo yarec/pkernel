@@ -393,40 +393,77 @@ return null;
 }
 $ax = cache($aw);
 $ay = $ax['userinfo'] ? $ax['userinfo'] : null;
-$ay['id'] = $ay['uid'] = getArg($ay, 'user_id');
+if (isset($ax['luser'])) {
+$ay['id'] = $ay['uid'] = $ax['luser']['id'];
 return $ay;
 }
-public static function getTokenUser($az, $z)
+return null;
+}
+public static function getCubeTokenUser($aw)
 {
-$bc = $z->getParam('uid');
+if (!$aw) {
+return null;
+}
+$ax = cache($aw);
+$ak = $ax['user'] ? $ax['user'] : null;
+if (isset($ax['luser'])) {
+$ak['id'] = $ak['uid'] = $ax['luser']['id'];
+return $ak;
+}
+return null;
+}
+public static function getAuthType($az, $aw)
+{
+if (isset($az['auth_type'])) {
+return $az['auth_type'];
+}
+$bc = explode('$$', $aw);
+if (count($bc) == 2) {
+return $bc[1];
+}
+return null;
+}
+public static function getTokenUser($bd, $z)
+{
+$be = $z->getParam('uid');
 $ak = null;
-$bd = $z->getParams();
-$be = self::check_appid($bd);
-if ($be && check_sign($bd, $be)) {
-debug("appkey: {$be}");
-$ak = ['id' => $bc, 'roles' => ['admin']];
+$az = $z->getParams();
+$bf = self::check_appid($az);
+if ($bf && check_sign($az, $bf)) {
+debug("appkey: {$bf}");
+$ak = ['id' => $be, 'roles' => ['admin']];
 } else {
 if (self::isStateless()) {
 debug("isStateless");
-$ak = ['id' => $bc, 'role' => 'user'];
+$ak = ['id' => $be, 'role' => 'user'];
 } else {
 $aw = self::$_token;
-$bf = \cfg::get('use_ucenter_oauth');
-if ($bf) {
+$bg = \cfg::get('use_ucenter_oauth');
+if ($bh = self::getAuthType($az, $aw)) {
+if ($bh == 'cube') {
+return self::getCubeTokenUser($aw);
+}
+}
+if ($bg) {
 return self::getUcTokenUser($aw);
 }
-$bg = self::getToken($z, 'access_token');
+$bi = self::getToken($z, 'access_token');
 if (self::isEnableSso()) {
 debug("getTokenUserBySso");
 $ak = self::getTokenUserBySso($aw);
 } else {
 debug("get from db");
 if ($aw) {
+$bj = \cfg::get('disable_cache_user');
+if ($bj) {
+$ak = \db::row($bd, ['token' => $aw]);
+} else {
 $ak = cache($aw);
 $ak = $ak['user'];
+}
 } else {
-if ($bg) {
-$ak = self::getAccessTokenUser($az, $bg);
+if ($bi) {
+$ak = self::getAccessTokenUser($bd, $bi);
 }
 }
 if ($ak) {
@@ -437,17 +474,17 @@ $ak['roles'] = [getArg($ak, 'role')];
 }
 return $ak;
 }
-public static function check_appid($bd)
+public static function check_appid($az)
 {
-$bh = getArg($bd, 'appid');
-if ($bh) {
+$bk = getArg($az, 'appid');
+if ($bk) {
 $m = cfg::get('support_service_list', 'service');
-if (isset($m[$bh])) {
-debug("appid: {$bh} ok");
-return $m[$bh];
+if (isset($m[$bk])) {
+debug("appid: {$bk} ok");
+return $m[$bk];
 }
 }
-debug("appid: {$bh} not ok");
+debug("appid: {$bk} not ok");
 return '';
 }
 public static function getTokenUserBySso($aw)
@@ -455,29 +492,29 @@ public static function getTokenUserBySso($aw)
 $ak = ms('sso')->getuserinfo(['token' => $aw])->json();
 return $ak;
 }
-public static function getAccessTokenUser($az, $bg)
+public static function getAccessTokenUser($bd, $bi)
 {
-$bi = \db::row('oauth_access_tokens', ['access_token' => $bg]);
-if ($bi) {
-$bj = strtotime($bi['expires']);
-if ($bj - time() > 0) {
-$ak = \db::row($az, ['id' => $bi['user_id']]);
+$bl = \db::row('oauth_access_tokens', ['access_token' => $bi]);
+if ($bl) {
+$bm = strtotime($bl['expires']);
+if ($bm - time() > 0) {
+$ak = \db::row($bd, ['id' => $bl['user_id']]);
 }
 }
 return $ak;
 }
-public static function user_tbl($bk = null)
+public static function user_tbl($bn = null)
 {
-if ($bk) {
-self::$_user_tbl = $bk;
+if ($bn) {
+self::$_user_tbl = $bn;
 }
 return self::$_user_tbl;
 }
-public static function render($bl, $bm, $bn, $ab)
+public static function render($bo, $bp, $bq, $ab)
 {
-$bo = new \Slim\Views\Twig($bm, ['cache' => false]);
+$br = new \Slim\Views\Twig($bp, ['cache' => false]);
 self::$_foundRoute = true;
-return $bo->render($bl, $bn, $ab);
+return $br->render($bo, $bq, $ab);
 }
 public static function isFoundRoute()
 {
@@ -489,23 +526,23 @@ return self::$_rest_prefix;
 }
 public static function parse_rest()
 {
-$bp = str_replace(self::$_rest_prefix, '', self::uri());
-$bq = explode('/', $bp);
-$br = getArg($bq, 1, '');
-$bs = getArg($bq, 2, '');
-return [$br, $bs];
+$bs = str_replace(self::$_rest_prefix, '', self::uri());
+$bt = explode('/', $bs);
+$bu = getArg($bt, 1, '');
+$bv = getArg($bt, 2, '');
+return [$bu, $bv];
 }
-public static function rest_select_add($bt = '')
+public static function rest_select_add($bw = '')
 {
-if ($bt) {
-self::$_rest_select_add = $bt;
+if ($bw) {
+self::$_rest_select_add = $bw;
 }
 return self::$_rest_select_add;
 }
-public static function rest_join_add($bt = '')
+public static function rest_join_add($bw = '')
 {
-if ($bt) {
-self::$_rest_join_add = $bt;
+if ($bw) {
+self::$_rest_join_add = $bw;
 }
 return self::$_rest_join_add;
 }
@@ -523,28 +560,74 @@ self::$_global_view_data = $ab;
 }
 return self::$_global_view_data;
 }
-public static function gets($bu = '', $bv = '')
+public static function gets($bx = '', $by = '')
 {
-if (!$bu) {
+if (!$bx) {
 return self::$_gets;
 }
-if (!$bv) {
-return self::$_gets[$bu];
+if (!$by) {
+return self::$_gets[$bx];
 }
-if ($bv == '_clear') {
-$bv = '';
+if ($by == '_clear') {
+$by = '';
 }
-self::$_gets[$bu] = $bv;
+self::$_gets[$bx] = $by;
 return self::$_gets;
+}
+}
+class cube
+{
+static $passport = null;
+static $client = null;
+static $cid = null;
+static $cst = null;
+public static function client()
+{
+if (!self::$client) {
+$m = cfg::get('oauth', 'oauth')['cube'];
+$bz = $m['endpoint'];
+$cd = new \Gql\Client($bz, ['verify' => false]);
+self::$client = $cd;
+self::$cid = $m['client_id'];
+self::$cst = $m['client_secret'];
+}
+return self::$client;
+}
+public static function login($ce, $cf)
+{
+self::client();
+$cg = ['args' => ['client_id' => self::$cid, 'client_secret' => self::$cst, 'username' => $ce, 'password' => $cf], "resp" => ["access_token", "token_type", 'expires_in', 'refresh_token']];
+$ab = self::client()->query('passport', $cg);
+$ab = $ab['data'];
+self::$passport = $ab['passport'];
+return $ab;
+}
+public static function user()
+{
+$ab = self::client()->query('user', ['params' => ['access_token' => self::$passport['access_token']], 'resp' => ['id', 'username', 'email', 'phone', 'roles' => ['id', 'app_id', 'instance_id', 'role_id']]]);
+$ab = $ab['data'];
+return $ab;
+}
+public static function roles()
+{
+$ab = self::client()->query('roles', ['params' => ['access_token' => self::$passport['access_token']], 'resp' => ['id', 'app_id', 'instance_id', 'name', 'title', 'description']]);
+$ab = $ab['data'];
+return $ab;
+}
+public static function modules()
+{
+$ab = self::client()->query('modules', ['params' => ['access_token' => self::$passport['access_token']], 'resp' => ['id', 'app_id', 'type', 'name', 'url']]);
+$ab = $ab['data'];
+return $ab;
 }
 }
 use Medoo\Medoo;
 if (!function_exists('fixfn')) {
-function fixfn($bw)
+function fixfn($ch)
 {
-foreach ($bw as $bx) {
-if (!function_exists($bx)) {
-eval("function {$bx}(){}");
+foreach ($ch as $ci) {
+if (!function_exists($ci)) {
+eval("function {$ci}(){}");
 }
 }
 }
@@ -558,8 +641,8 @@ return array('database_type' => 'mysql', 'database_name' => 'myapp_dev', 'server
 }
 }
 }
-$bw = array('debug');
-fixfn($bw);
+$ch = array('debug');
+fixfn($ch);
 class db
 {
 private static $_db_list;
@@ -571,18 +654,18 @@ private static $_dbc;
 private static $_dbc_master;
 private static $_ins;
 private static $tbl_desc = array();
-public static function init($m, $by = true)
+public static function init($m, $cj = true)
 {
-self::init_db($m, $by);
+self::init_db($m, $cj);
 }
 public static function conns()
 {
-$bz['_db'] = self::queryRow('select user() as user, database() as dbname');
+$ck['_db'] = self::queryRow('select user() as user, database() as dbname');
 self::use_master_db();
-$bz['_db_master'] = self::queryRow('select user() as user, database() as dbname');
+$ck['_db_master'] = self::queryRow('select user() as user, database() as dbname');
 self::use_default_db();
-$bz['_db_default'] = self::queryRow('select user() as user, database() as dbname');
-return $bz;
+$ck['_db_default'] = self::queryRow('select user() as user, database() as dbname');
+return $ck;
 }
 public static function new_db($m)
 {
@@ -599,20 +682,20 @@ $m['username'] = env('DB_USER', $m['username']);
 $m['password'] = env('DB_PASS', $m['password']);
 return $m;
 }
-public static function init_db($m, $by = true)
+public static function init_db($m, $cj = true)
 {
 self::$_dbc = self::get_db_cfg($m);
-$cd = self::$_dbc['database_name'];
-self::$_dbc_list[$cd] = self::$_dbc;
-self::$_db_list[$cd] = self::new_db(self::$_dbc);
-if ($by) {
-self::use_db($cd);
+$cl = self::$_dbc['database_name'];
+self::$_dbc_list[$cl] = self::$_dbc;
+self::$_db_list[$cl] = self::new_db(self::$_dbc);
+if ($cj) {
+self::use_db($cl);
 }
 }
-public static function use_db($cd)
+public static function use_db($cl)
 {
-self::$_db = self::$_db_list[$cd];
-self::$_dbc = self::$_dbc_list[$cd];
+self::$_db = self::$_db_list[$cl];
+self::$_dbc = self::$_dbc_list[$cl];
 }
 public static function use_default_db()
 {
@@ -626,12 +709,12 @@ public static function dbc()
 {
 return self::$_dbc;
 }
-public static function switch_dbc($ce)
+public static function switch_dbc($cm)
 {
-$cf = ms('master')->get(['path' => '/admin/corpins', 'data' => ['corpid' => $ce]]);
-$cg = $cf->json();
-$cg = getArg($cg, 'data', []);
-self::$_dbc = $cg;
+$cn = ms('master')->get(['path' => '/admin/corpins', 'data' => ['corpid' => $cm]]);
+$co = $cn->json();
+$co = getArg($co, 'data', []);
+self::$_dbc = $co;
 self::$_db = self::$_db_default = self::new_db(self::$_dbc);
 }
 public static function obj()
@@ -642,9 +725,9 @@ self::$_db = self::$_db_default = self::$_db_master = self::new_db(self::$_dbc);
 info('====== init dbc =====');
 $aw = \ctx::getToken(req());
 $ak = \ctx::getUcTokenUser($aw);
-$ce = getArg($ak, 'corpid');
-if ($ce) {
-self::switch_dbc($ce);
+$cm = getArg($ak, 'corpid');
+if ($cm) {
+self::switch_dbc($cm);
 }
 }
 return self::$_db;
@@ -656,279 +739,279 @@ self::obj();
 }
 return self::$_dbc['database_type'];
 }
-public static function desc_sql($ch)
+public static function desc_sql($cp)
 {
 if (self::db_type() == 'mysql') {
-return "desc `{$ch}`";
+return "desc `{$cp}`";
 } else {
 if (self::db_type() == 'pgsql') {
-return "SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_NAME = '{$ch}'";
+return "SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_NAME = '{$cp}'";
 } else {
 return '';
 }
 }
 }
-public static function table_cols($br)
+public static function table_cols($bu)
 {
-$ci = self::$tbl_desc;
-if (!isset($ci[$br])) {
-$cj = self::desc_sql($br);
-if ($cj) {
-$ci[$br] = self::query($cj);
-self::$tbl_desc = $ci;
-debug("---------------- cache not found : {$br}");
+$cq = self::$tbl_desc;
+if (!isset($cq[$bu])) {
+$cr = self::desc_sql($bu);
+if ($cr) {
+$cq[$bu] = self::query($cr);
+self::$tbl_desc = $cq;
+debug("---------------- cache not found : {$bu}");
 } else {
-debug("empty desc_sql for: {$br}");
+debug("empty desc_sql for: {$bu}");
 }
 }
-if (!isset($ci[$br])) {
+if (!isset($cq[$bu])) {
 return array();
 } else {
-return self::$tbl_desc[$br];
+return self::$tbl_desc[$bu];
 }
 }
-public static function col_array($br)
+public static function col_array($bu)
 {
-$ck = function ($bv) use($br) {
-return $br . '.' . $bv;
+$cs = function ($by) use($bu) {
+return $bu . '.' . $by;
 };
-return getKeyValues(self::table_cols($br), 'Field', $ck);
+return getKeyValues(self::table_cols($bu), 'Field', $cs);
 }
-public static function valid_table_col($br, $cl)
+public static function valid_table_col($bu, $ct)
 {
-$cm = self::table_cols($br);
-foreach ($cm as $cn) {
-if ($cn['Field'] == $cl) {
-$c = $cn['Type'];
-return is_string_column($cn['Type']);
+$cu = self::table_cols($bu);
+foreach ($cu as $cv) {
+if ($cv['Field'] == $ct) {
+$c = $cv['Type'];
+return is_string_column($cv['Type']);
 }
 }
 return false;
 }
-public static function tbl_data($br, $ab)
+public static function tbl_data($bu, $ab)
 {
-$cm = self::table_cols($br);
+$cu = self::table_cols($bu);
 $v = [];
-foreach ($cm as $cn) {
-$co = $cn['Field'];
-if (isset($ab[$co])) {
-$v[$co] = $ab[$co];
+foreach ($cu as $cv) {
+$cw = $cv['Field'];
+if (isset($ab[$cw])) {
+$v[$cw] = $ab[$cw];
 }
 }
 return $v;
 }
 public static function test()
 {
-$cj = "select * from tags limit 10";
-$cp = self::obj()->query($cj)->fetchAll(\PDO::FETCH_ASSOC);
-var_dump($cp);
+$cr = "select * from tags limit 10";
+$cx = self::obj()->query($cr)->fetchAll(\PDO::FETCH_ASSOC);
+var_dump($cx);
 }
-public static function has_st($br, $cq)
+public static function has_st($bu, $cy)
 {
-$cr = '_st';
-return isset($cq[$cr]) || isset($cq[$br . '.' . $cr]);
+$cz = '_st';
+return isset($cy[$cz]) || isset($cy[$bu . '.' . $cz]);
 }
-public static function getWhere($br, $cs)
+public static function getWhere($bu, $de)
 {
-$cr = '_st';
-if (!self::valid_table_col($br, $cr)) {
-return $cs;
+$cz = '_st';
+if (!self::valid_table_col($bu, $cz)) {
+return $de;
 }
-$cr = $br . '._st';
-if (is_array($cs)) {
-$ct = array_keys($cs);
-$cu = preg_grep("/^AND\\s*#?\$/i", $ct);
-$cv = preg_grep("/^OR\\s*#?\$/i", $ct);
-$cw = array_diff_key($cs, array_flip(explode(' ', 'AND OR GROUP ORDER HAVING LIMIT LIKE MATCH')));
-$cq = [];
-if ($cw != array()) {
-$cq = $cw;
-if (!self::has_st($br, $cq)) {
-$cs[$cr] = 1;
-$cs = ['AND' => $cs];
-}
-}
-if (!empty($cu)) {
-$l = array_values($cu);
-$cq = $cs[$l[0]];
-if (!self::has_st($br, $cq)) {
-$cs[$l[0]][$cr] = 1;
+$cz = $bu . '._st';
+if (is_array($de)) {
+$df = array_keys($de);
+$dg = preg_grep("/^AND\\s*#?\$/i", $df);
+$dh = preg_grep("/^OR\\s*#?\$/i", $df);
+$di = array_diff_key($de, array_flip(explode(' ', 'AND OR GROUP ORDER HAVING LIMIT LIKE MATCH')));
+$cy = [];
+if ($di != array()) {
+$cy = $di;
+if (!self::has_st($bu, $cy)) {
+$de[$cz] = 1;
+$de = ['AND' => $de];
 }
 }
-if (!empty($cv)) {
-$l = array_values($cv);
-$cq = $cs[$l[0]];
-if (!self::has_st($br, $cq)) {
-$cs[$l[0]][$cr] = 1;
+if (!empty($dg)) {
+$l = array_values($dg);
+$cy = $de[$l[0]];
+if (!self::has_st($bu, $cy)) {
+$de[$l[0]][$cz] = 1;
 }
 }
-if (!isset($cs['AND']) && !self::has_st($br, $cq)) {
-$cs['AND'][$cr] = 1;
+if (!empty($dh)) {
+$l = array_values($dh);
+$cy = $de[$l[0]];
+if (!self::has_st($bu, $cy)) {
+$de[$l[0]][$cz] = 1;
 }
 }
-return $cs;
+if (!isset($de['AND']) && !self::has_st($bu, $cy)) {
+$de['AND'][$cz] = 1;
 }
-public static function all_sql($br, $cs = array(), $cx = '*', $cy = null)
+}
+return $de;
+}
+public static function all_sql($bu, $de = array(), $dj = '*', $dk = null)
 {
-$cz = [];
-if ($cy) {
-$cj = self::obj()->selectContext($br, $cz, $cy, $cx, $cs);
+$dl = [];
+if ($dk) {
+$cr = self::obj()->selectContext($bu, $dl, $dk, $dj, $de);
 } else {
-$cj = self::obj()->selectContext($br, $cz, $cx, $cs);
+$cr = self::obj()->selectContext($bu, $dl, $dj, $de);
 }
-return $cj;
+return $cr;
 }
-public static function all($br, $cs = array(), $cx = '*', $cy = null)
+public static function all($bu, $de = array(), $dj = '*', $dk = null)
 {
-$cs = self::getWhere($br, $cs);
-info($cs);
-if ($cy) {
-$cp = self::obj()->select($br, $cy, $cx, $cs);
+$de = self::getWhere($bu, $de);
+info($de);
+if ($dk) {
+$cx = self::obj()->select($bu, $dk, $dj, $de);
 } else {
-$cp = self::obj()->select($br, $cx, $cs);
+$cx = self::obj()->select($bu, $dj, $de);
 }
-return $cp;
+return $cx;
 }
-public static function count($br, $cs = array('_st' => 1))
+public static function count($bu, $de = array('_st' => 1))
 {
-$cs = self::getWhere($br, $cs);
-return self::obj()->count($br, $cs);
+$de = self::getWhere($bu, $de);
+return self::obj()->count($bu, $de);
 }
-public static function row_sql($br, $cs = array(), $cx = '*', $cy = '')
+public static function row_sql($bu, $de = array(), $dj = '*', $dk = '')
 {
-return self::row($br, $cs, $cx, $cy, true);
+return self::row($bu, $de, $dj, $dk, true);
 }
-public static function row($br, $cs = array(), $cx = '*', $cy = '', $de = null)
+public static function row($bu, $de = array(), $dj = '*', $dk = '', $dm = null)
 {
-$cs = self::getWhere($br, $cs);
-if (!isset($cs['LIMIT'])) {
-$cs['LIMIT'] = 1;
+$de = self::getWhere($bu, $de);
+if (!isset($de['LIMIT'])) {
+$de['LIMIT'] = 1;
 }
-if ($cy) {
-if ($de) {
-return self::obj()->selectContext($br, $cy, $cx, $cs);
+if ($dk) {
+if ($dm) {
+return self::obj()->selectContext($bu, $dk, $dj, $de);
 }
-$cp = self::obj()->select($br, $cy, $cx, $cs);
+$cx = self::obj()->select($bu, $dk, $dj, $de);
 } else {
-if ($de) {
-return self::obj()->selectContext($br, $cx, $cs);
+if ($dm) {
+return self::obj()->selectContext($bu, $dj, $de);
 }
-$cp = self::obj()->select($br, $cx, $cs);
+$cx = self::obj()->select($bu, $dj, $de);
 }
-if ($cp) {
-return $cp[0];
+if ($cx) {
+return $cx[0];
 } else {
 return null;
 }
 }
-public static function one($br, $cs = array(), $cx = '*', $cy = '')
+public static function one($bu, $de = array(), $dj = '*', $dk = '')
 {
-$df = self::row($br, $cs, $cx, $cy);
-$dg = '';
-if ($df) {
-$dh = array_keys($df);
-$dg = $df[$dh[0]];
+$dn = self::row($bu, $de, $dj, $dk);
+$do = '';
+if ($dn) {
+$dp = array_keys($dn);
+$do = $dn[$dp[0]];
 }
-return $dg;
+return $do;
 }
-public static function parseUk($br, $di, $ab)
+public static function parseUk($bu, $dq, $ab)
 {
-$dj = true;
-info("uk: {$di}, " . json_encode($ab));
-if (is_array($di)) {
-foreach ($di as $dk) {
-if (!isset($ab[$dk])) {
-$dj = false;
+$dr = true;
+info("uk: {$dq}, " . json_encode($ab));
+if (is_array($dq)) {
+foreach ($dq as $ds) {
+if (!isset($ab[$ds])) {
+$dr = false;
 } else {
-$dl[$dk] = $ab[$dk];
+$dt[$ds] = $ab[$ds];
 }
-}
-} else {
-if (!isset($ab[$di])) {
-$dj = false;
-} else {
-$dl = [$di => $ab[$di]];
-}
-}
-$dm = false;
-if ($dj) {
-info("has uk {$dj}");
-info("where: " . json_encode($dl));
-if (!self::obj()->has($br, ['AND' => $dl])) {
-$dm = true;
 }
 } else {
-$dm = true;
+if (!isset($ab[$dq])) {
+$dr = false;
+} else {
+$dt = [$dq => $ab[$dq]];
 }
-return [$dl, $dm];
 }
-public static function save($br, $ab, $di = 'id')
+$du = false;
+if ($dr) {
+info("has uk {$dr}");
+info("where: " . json_encode($dt));
+if (!self::obj()->has($bu, ['AND' => $dt])) {
+$du = true;
+}
+} else {
+$du = true;
+}
+return [$dt, $du];
+}
+public static function save($bu, $ab, $dq = 'id')
 {
-list($dl, $dm) = self::parseUk($br, $di, $ab);
-info("isInsert: {$dm}, {$br} {$di} " . json_encode($ab));
-if ($dm) {
-debug("insert {$br} : " . json_encode($ab));
-self::obj()->insert($br, $ab);
+list($dt, $du) = self::parseUk($bu, $dq, $ab);
+info("isInsert: {$du}, {$bu} {$dq} " . json_encode($ab));
+if ($du) {
+debug("insert {$bu} : " . json_encode($ab));
+self::obj()->insert($bu, $ab);
 $ab['id'] = self::obj()->id();
 } else {
-debug("update {$br} " . json_encode($dl));
-self::obj()->update($br, $ab, ['AND' => $dl]);
+debug("update {$bu} " . json_encode($dt));
+self::obj()->update($bu, $ab, ['AND' => $dt]);
 }
 return $ab;
 }
-public static function update($br, $ab, $cs)
+public static function update($bu, $ab, $de)
 {
-self::obj()->update($br, $ab, $cs);
+self::obj()->update($bu, $ab, $de);
 }
-public static function exec($cj)
+public static function exec($cr)
 {
-return self::obj()->exec($cj);
+return self::obj()->exec($cr);
 }
-public static function query($cj)
+public static function query($cr)
 {
-return self::obj()->query($cj)->fetchAll(\PDO::FETCH_ASSOC);
+return self::obj()->query($cr)->fetchAll(\PDO::FETCH_ASSOC);
 }
-public static function queryRow($cj)
+public static function queryRow($cr)
 {
-$cp = self::query($cj);
-if ($cp) {
-return $cp[0];
+$cx = self::query($cr);
+if ($cx) {
+return $cx[0];
 } else {
 return null;
 }
 }
-public static function queryOne($cj)
+public static function queryOne($cr)
 {
-$df = self::queryRow($cj);
-return self::oneVal($df);
+$dn = self::queryRow($cr);
+return self::oneVal($dn);
 }
-public static function oneVal($df)
+public static function oneVal($dn)
 {
-$dg = '';
-if ($df) {
-$dh = array_keys($df);
-$dg = $df[$dh[0]];
+$do = '';
+if ($dn) {
+$dp = array_keys($dn);
+$do = $dn[$dp[0]];
 }
-return $dg;
+return $do;
 }
-public static function updateBatch($br, $ab, $di = 'id')
+public static function updateBatch($bu, $ab, $dq = 'id')
 {
-$dn = $br;
-if (!is_array($ab) || empty($dn)) {
+$dv = $bu;
+if (!is_array($ab) || empty($dv)) {
 return FALSE;
 }
-$cj = "UPDATE `{$dn}` SET";
-foreach ($ab as $bs => $df) {
-foreach ($df as $k => $u) {
-$do[$k][] = "WHEN {$bs} THEN {$u}";
+$cr = "UPDATE `{$dv}` SET";
+foreach ($ab as $bv => $dn) {
+foreach ($dn as $k => $u) {
+$dw[$k][] = "WHEN {$bv} THEN {$u}";
 }
 }
-foreach ($do as $k => $u) {
-$cj .= ' `' . trim($k, '`') . '`=CASE ' . $di . ' ' . join(' ', $u) . ' END,';
+foreach ($dw as $k => $u) {
+$cr .= ' `' . trim($k, '`') . '`=CASE ' . $dq . ' ' . join(' ', $u) . ' END,';
 }
-$cj = trim($cj, ',');
-$cj .= ' WHERE ' . $di . ' IN(' . join(',', array_keys($ab)) . ')';
-return self::query($cj);
+$cr = trim($cr, ',');
+$cr .= ' WHERE ' . $dq . ' IN(' . join(',', array_keys($ab)) . ')';
+return self::query($cr);
 }
 }
 class fcache
@@ -937,22 +1020,22 @@ const FILE_LIFE_KEY = 'FILE_LIFE_KEY';
 const CLEAR_ALL_KEY = 'CLEAR_ALL';
 static $_instance = null;
 protected $_options = array('cache_dir' => './cache', 'file_locking' => true, 'file_name_prefix' => 'cache', 'cache_file_umask' => 0777, 'file_life' => 100000);
-static function &getInstance($dp = array())
+static function &getInstance($dx = array())
 {
 if (self::$_instance === null) {
-self::$_instance = new self($dp);
+self::$_instance = new self($dx);
 }
 return self::$_instance;
 }
-static function &setOptions($dp = array())
+static function &setOptions($dx = array())
 {
-return self::getInstance($dp);
+return self::getInstance($dx);
 }
-private function __construct($dp = array())
+private function __construct($dx = array())
 {
 if ($this->_options['cache_dir'] !== null) {
-$bm = rtrim($this->_options['cache_dir'], '/') . '/';
-$this->_options['cache_dir'] = $bm;
+$bp = rtrim($this->_options['cache_dir'], '/') . '/';
+$this->_options['cache_dir'] = $bp;
 if (!is_dir($this->_options['cache_dir'])) {
 mkdir($this->_options['cache_dir'], 0777, TRUE);
 }
@@ -965,7 +1048,7 @@ exit('file_cache: "options" cache_dir 不能为空 ');
 }
 static function setCacheDir($l)
 {
-$dq =& self::getInstance();
+$dy =& self::getInstance();
 if (!is_dir($l)) {
 exit('file_cache: ' . $l . ' 不是一个有效路径 ');
 }
@@ -973,86 +1056,86 @@ if (!is_writable($l)) {
 exit('file_cache: 路径 "' . $l . '" 不可写');
 }
 $l = rtrim($this->_options['cache_dir'], '/') . '/';
-$dq->_options['cache_dir'] = $l;
+$dy->_options['cache_dir'] = $l;
 }
-static function save($ab, $bs = null, $dr = null)
+static function save($ab, $bv = null, $dz = null)
 {
-$dq =& self::getInstance();
-if (!$bs) {
-if ($dq->_id) {
-$bs = $dq->_id;
+$dy =& self::getInstance();
+if (!$bv) {
+if ($dy->_id) {
+$bv = $dy->_id;
 } else {
 exit('file_cache:save() id 不能为空!');
 }
 }
-$ds = time();
-if ($dr) {
-$ab[self::FILE_LIFE_KEY] = $ds + $dr;
-} elseif ($dr != 0) {
-$ab[self::FILE_LIFE_KEY] = $ds + $dq->_options['file_life'];
+$ef = time();
+if ($dz) {
+$ab[self::FILE_LIFE_KEY] = $ef + $dz;
+} elseif ($dz != 0) {
+$ab[self::FILE_LIFE_KEY] = $ef + $dy->_options['file_life'];
 }
-$r = $dq->_file($bs);
-$ab = "\n" . " // mktime: " . $ds . "\n" . " return " . var_export($ab, true) . "\n?>";
-$cf = $dq->_filePutContents($r, $ab);
-return $cf;
+$r = $dy->_file($bv);
+$ab = "\n" . " // mktime: " . $ef . "\n" . " return " . var_export($ab, true) . "\n?>";
+$cn = $dy->_filePutContents($r, $ab);
+return $cn;
 }
-static function load($bs)
+static function load($bv)
 {
-$dq =& self::getInstance();
-$ds = time();
-if (!$dq->test($bs)) {
+$dy =& self::getInstance();
+$ef = time();
+if (!$dy->test($bv)) {
 return false;
 }
-$dt = $dq->_file(self::CLEAR_ALL_KEY);
-$r = $dq->_file($bs);
-if (is_file($dt) && filemtime($dt) > filemtime($r)) {
+$eg = $dy->_file(self::CLEAR_ALL_KEY);
+$r = $dy->_file($bv);
+if (is_file($eg) && filemtime($eg) > filemtime($r)) {
 return false;
 }
-$ab = $dq->_fileGetContents($r);
-if (empty($ab[self::FILE_LIFE_KEY]) || $ds < $ab[self::FILE_LIFE_KEY]) {
+$ab = $dy->_fileGetContents($r);
+if (empty($ab[self::FILE_LIFE_KEY]) || $ef < $ab[self::FILE_LIFE_KEY]) {
 unset($ab[self::FILE_LIFE_KEY]);
 return $ab;
 }
 return false;
 }
-protected function _filePutContents($r, $du)
+protected function _filePutContents($r, $eh)
 {
-$dq =& self::getInstance();
-$dv = false;
-$dw = @fopen($r, 'ab+');
-if ($dw) {
-if ($dq->_options['file_locking']) {
-@flock($dw, LOCK_EX);
+$dy =& self::getInstance();
+$ei = false;
+$ej = @fopen($r, 'ab+');
+if ($ej) {
+if ($dy->_options['file_locking']) {
+@flock($ej, LOCK_EX);
 }
-fseek($dw, 0);
-ftruncate($dw, 0);
-$dx = @fwrite($dw, $du);
-if (!($dx === false)) {
-$dv = true;
+fseek($ej, 0);
+ftruncate($ej, 0);
+$ek = @fwrite($ej, $eh);
+if (!($ek === false)) {
+$ei = true;
 }
-@fclose($dw);
+@fclose($ej);
 }
-@chmod($r, $dq->_options['cache_file_umask']);
-return $dv;
+@chmod($r, $dy->_options['cache_file_umask']);
+return $ei;
 }
-protected function _file($bs)
+protected function _file($bv)
 {
-$dq =& self::getInstance();
-$dy = $dq->_idToFileName($bs);
-return $dq->_options['cache_dir'] . $dy;
+$dy =& self::getInstance();
+$el = $dy->_idToFileName($bv);
+return $dy->_options['cache_dir'] . $el;
 }
-protected function _idToFileName($bs)
+protected function _idToFileName($bv)
 {
-$dq =& self::getInstance();
-$dq->_id = $bs;
-$x = $dq->_options['file_name_prefix'];
-$dv = $x . '---' . $bs;
-return $dv;
+$dy =& self::getInstance();
+$dy->_id = $bv;
+$x = $dy->_options['file_name_prefix'];
+$ei = $x . '---' . $bv;
+return $ei;
 }
-static function test($bs)
+static function test($bv)
 {
-$dq =& self::getInstance();
-$r = $dq->_file($bs);
+$dy =& self::getInstance();
+$r = $dy->_file($bv);
 if (!is_file($r)) {
 return false;
 }
@@ -1067,16 +1150,16 @@ return include $r;
 }
 static function clear()
 {
-$dq =& self::getInstance();
-$dq->save('CLEAR_ALL', self::CLEAR_ALL_KEY);
+$dy =& self::getInstance();
+$dy->save('CLEAR_ALL', self::CLEAR_ALL_KEY);
 }
-static function del($bs)
+static function del($bv)
 {
-$dq =& self::getInstance();
-if (!$dq->test($bs)) {
+$dy =& self::getInstance();
+if (!$dy->test($bv)) {
 return false;
 }
-$r = $dq->_file($bs);
+$r = $dy->_file($bv);
 return unlink($r);
 }
 }
@@ -1085,36 +1168,36 @@ class mdb
 private static $_client;
 private static $_db;
 private static $_ins;
-public static function obj($cd = 'myapp_dev')
+public static function obj($cl = 'myapp_dev')
 {
 if (!self::$_client) {
 self::$_client = new \Sokil\Mongo\Client();
 }
 if (!self::$_db) {
-self::$_db = self::$_client->{$cd};
+self::$_db = self::$_client->{$cl};
 }
 return self::$_db;
 }
 public static function test()
 {
-$bc = 1;
-$dz = self::obj()->blogs;
-$ef = $dz->find()->findAll();
-$ab = object2array($ef);
-$eg = 1;
-foreach ($ab as $bu => $eh) {
-unset($eh['_id']);
-unset($eh['tid']);
-unset($eh['tags']);
-if (isset($eh['_intm'])) {
-$eh['_intm'] = date('Y-m-d H:i:s', $eh['_intm']['sec']);
+$be = 1;
+$em = self::obj()->blogs;
+$en = $em->find()->findAll();
+$ab = object2array($en);
+$eo = 1;
+foreach ($ab as $bx => $ep) {
+unset($ep['_id']);
+unset($ep['tid']);
+unset($ep['tags']);
+if (isset($ep['_intm'])) {
+$ep['_intm'] = date('Y-m-d H:i:s', $ep['_intm']['sec']);
 }
-if (isset($eh['_uptm'])) {
-$eh['_uptm'] = date('Y-m-d H:i:s', $eh['_uptm']['sec']);
+if (isset($ep['_uptm'])) {
+$ep['_uptm'] = date('Y-m-d H:i:s', $ep['_uptm']['sec']);
 }
-$eh['uid'] = $bc;
-$v = db::save('blogs', $eh);
-$eg++;
+$ep['uid'] = $be;
+$v = db::save('blogs', $ep);
+$eo++;
 }
 echo 'finish test';
 die;
@@ -1128,7 +1211,7 @@ private static $tbl_desc = array();
 public static function obj()
 {
 if (!self::$_client) {
-self::$_client = $ei = new Predis\Client(cfg::get_redis_cfg());
+self::$_client = $cd = new Predis\Client(cfg::get_redis_cfg());
 }
 return self::$_client;
 }
@@ -1143,7 +1226,7 @@ static $id_user = null;
 static $user_info = null;
 static $user_role = null;
 private static $oauth_cfg;
-public static function init($ej = array())
+public static function init($eq = array())
 {
 $m = cfg::get('oauth', 'oauth')['uc'];
 $m['host'] = env('UC_HOST', $m['host']);
@@ -1153,159 +1236,159 @@ $m['redirectUri'] = env('UC_REDIRECT_URI', $m['redirectUri']);
 $m['username'] = env('UC_USERNAME', $m['username']);
 $m['passwd'] = env('UC_PASSWD', $m['passwd']);
 self::$oauth_cfg = $m;
-if (isset($ej['host'])) {
-self::$UC_HOST = $ej['host'];
+if (isset($eq['host'])) {
+self::$UC_HOST = $eq['host'];
 }
 }
-public static function makeUrl($bp, $bd = '')
+public static function makeUrl($bs, $az = '')
 {
 if (!self::$oauth_cfg) {
 self::init();
 }
-return self::$oauth_cfg['host'] . $bp . ($bd ? '?' . $bd : '');
+return self::$oauth_cfg['host'] . $bs . ($az ? '?' . $az : '');
 }
-public static function pwd_login($ek = null, $el = null, $em = null, $en = null)
+public static function pwd_login($er = null, $es = null, $et = null, $eu = null)
 {
-$eo = $ek ? $ek : self::$oauth_cfg['username'];
-$ep = $el ? $el : self::$oauth_cfg['passwd'];
-$eq = $em ? $em : self::$oauth_cfg['clientId'];
-$er = $en ? $en : self::$oauth_cfg['clientSecret'];
-$ab = ['client_id' => $eq, 'client_secret' => $er, 'grant_type' => 'password', 'username' => $eo, 'password' => $ep];
-$es = self::makeUrl(self::API['accessToken']);
-$et = curl($es, 10, 30, $ab);
-$v = json_decode($et, true);
+$ev = $er ? $er : self::$oauth_cfg['username'];
+$cf = $es ? $es : self::$oauth_cfg['passwd'];
+$ew = $et ? $et : self::$oauth_cfg['clientId'];
+$ex = $eu ? $eu : self::$oauth_cfg['clientSecret'];
+$ab = ['client_id' => $ew, 'client_secret' => $ex, 'grant_type' => 'password', 'username' => $ev, 'password' => $cf];
+$ey = self::makeUrl(self::API['accessToken']);
+$ez = curl($ey, 10, 30, $ab);
+$v = json_decode($ez, true);
 self::_set_pwd_user($v);
 return $v;
 }
-public static function get_admin_token($eu = array())
+public static function get_admin_token($fg = array())
 {
-if (isset($eu['access_token'])) {
-$bg = $eu['access_token'];
+if (isset($fg['access_token'])) {
+$bi = $fg['access_token'];
 } else {
 $v = self::pwd_login();
-$bg = $v['data']['access_token'];
+$bi = $v['data']['access_token'];
 }
-return $bg;
+return $bi;
 }
-public static function id_login($bs, $em = null, $en = null, $ev = array())
+public static function id_login($bv, $et = null, $eu = null, $cg = array())
 {
-$eq = $em ? $em : self::$oauth_cfg['clientId'];
-$er = $en ? $en : self::$oauth_cfg['clientSecret'];
-$bg = self::get_admin_token($ev);
-$ab = ['client_id' => $eq, 'client_secret' => $er, 'grant_type' => 'id', 'access_token' => $bg, 'id' => $bs];
-$es = self::makeUrl(self::API['userAccessToken']);
-$et = curl($es, 10, 30, $ab);
-$v = json_decode($et, true);
+$ew = $et ? $et : self::$oauth_cfg['clientId'];
+$ex = $eu ? $eu : self::$oauth_cfg['clientSecret'];
+$bi = self::get_admin_token($cg);
+$ab = ['client_id' => $ew, 'client_secret' => $ex, 'grant_type' => 'id', 'access_token' => $bi, 'id' => $bv];
+$ey = self::makeUrl(self::API['userAccessToken']);
+$ez = curl($ey, 10, 30, $ab);
+$v = json_decode($ez, true);
 self::_set_id_user($v);
 return $v;
 }
-public static function authurl($bh, $ew, $bg)
+public static function authurl($bk, $fh, $bi)
 {
-$ex = self::$oauth_cfg['host'] . "/api/sso/redirect?access_token={$bg}&app_id={$bh}&domain_id={$ew}";
-return $ex;
+$fi = self::$oauth_cfg['host'] . "/api/sso/redirect?access_token={$bi}&app_id={$bk}&domain_id={$fh}";
+return $fi;
 }
-public static function code_login($ey, $ez = null, $em = null, $en = null)
+public static function code_login($fj, $fk = null, $et = null, $eu = null)
 {
-$fg = $ez ? $ez : self::$oauth_cfg['redirectUri'];
-$eq = $em ? $em : self::$oauth_cfg['clientId'];
-$er = $en ? $en : self::$oauth_cfg['clientSecret'];
-$ab = ['client_id' => $eq, 'client_secret' => $er, 'grant_type' => 'authorization_code', 'redirect_uri' => $fg, 'code' => $ey];
-$es = self::makeUrl(self::API['accessToken']);
-$et = curl($es, 10, 30, $ab);
-$v = json_decode($et, true);
+$fl = $fk ? $fk : self::$oauth_cfg['redirectUri'];
+$ew = $et ? $et : self::$oauth_cfg['clientId'];
+$ex = $eu ? $eu : self::$oauth_cfg['clientSecret'];
+$ab = ['client_id' => $ew, 'client_secret' => $ex, 'grant_type' => 'authorization_code', 'redirect_uri' => $fl, 'code' => $fj];
+$ey = self::makeUrl(self::API['accessToken']);
+$ez = curl($ey, 10, 30, $ab);
+$v = json_decode($ez, true);
 self::_set_code_user($v);
 return $v;
 }
-public static function user_info($bg)
+public static function user_info($bi)
 {
-$es = self::makeUrl(self::API['user'], 'access_token=' . $bg);
-$et = curl($es);
-$v = json_decode($et, true);
+$ey = self::makeUrl(self::API['user'], 'access_token=' . $bi);
+$ez = curl($ey);
+$v = json_decode($ez, true);
 self::_set_user_info($v);
 return $v;
 }
-public static function reg_user($eo, $el = '123456', $ev = array())
+public static function reg_user($ev, $es = '123456', $cg = array())
 {
-$bg = self::get_admin_token($ev);
-$ab = ['username' => $eo, 'password' => $el, 'access_token' => $bg];
-$es = self::makeUrl(self::API['user']);
-$et = curl($es, 10, 30, $ab);
-$fh = json_decode($et, true);
-return $fh;
+$bi = self::get_admin_token($cg);
+$ab = ['username' => $ev, 'password' => $es, 'access_token' => $bi];
+$ey = self::makeUrl(self::API['user']);
+$ez = curl($ey, 10, 30, $ab);
+$fm = json_decode($ez, true);
+return $fm;
 }
-public static function register_user($eo, $el = '123456')
+public static function register_user($ev, $es = '123456')
 {
-return self::reg_user($eo, $el);
+return self::reg_user($ev, $es);
 }
-public static function find_user($eu = array())
+public static function find_user($fg = array())
 {
-$bg = self::get_admin_token($eu);
-$bd = 'access_token=' . $bg;
-if (isset($eu['username'])) {
-$bd .= '&username=' . $eu['username'];
+$bi = self::get_admin_token($fg);
+$az = 'access_token=' . $bi;
+if (isset($fg['username'])) {
+$az .= '&username=' . $fg['username'];
 }
-if (isset($eu['phone'])) {
-$bd .= '&phone=' . $eu['phone'];
+if (isset($fg['phone'])) {
+$az .= '&phone=' . $fg['phone'];
 }
-$es = self::makeUrl(self::API['finduser'], $bd);
-$et = curl($es, 10, 30);
-$fh = json_decode($et, true);
-return $fh;
+$ey = self::makeUrl(self::API['finduser'], $az);
+$ez = curl($ey, 10, 30);
+$fm = json_decode($ez, true);
+return $fm;
 }
-public static function edit_user($bg, $ab = array())
+public static function edit_user($bi, $ab = array())
 {
-$es = self::makeUrl(self::API['user']);
-$ab['access_token'] = $bg;
-$ei = new \GuzzleHttp\Client();
-$cf = $ei->request('PUT', $es, ['form_params' => $ab, 'headers' => ['X-Accept' => 'application/json', 'Content-Type' => 'application/x-www-form-urlencoded']]);
-$et = $cf->getBody();
-return json_decode($et, true);
+$ey = self::makeUrl(self::API['user']);
+$ab['access_token'] = $bi;
+$cd = new \GuzzleHttp\Client();
+$cn = $cd->request('PUT', $ey, ['form_params' => $ab, 'headers' => ['X-Accept' => 'application/json', 'Content-Type' => 'application/x-www-form-urlencoded']]);
+$ez = $cn->getBody();
+return json_decode($ez, true);
 }
-public static function set_user_role($bg, $ew, $fi, $fj = 'guest')
+public static function set_user_role($bi, $fh, $fn, $fo = 'guest')
 {
-$ab = ['access_token' => $bg, 'domain_id' => $ew, 'user_id' => $fi, 'role_name' => $fj];
-$es = self::makeUrl(self::API['userRole']);
-$et = curl($es, 10, 30, $ab);
-return json_decode($et, true);
+$ab = ['access_token' => $bi, 'domain_id' => $fh, 'user_id' => $fn, 'role_name' => $fo];
+$ey = self::makeUrl(self::API['userRole']);
+$ez = curl($ey, 10, 30, $ab);
+return json_decode($ez, true);
 }
-public static function user_role($bg, $ew)
+public static function user_role($bi, $fh)
 {
-$ab = ['access_token' => $bg, 'domain_id' => $ew];
-$es = self::makeUrl(self::API['userRole']);
-$es = "{$es}?access_token={$bg}&domain_id={$ew}";
-$et = curl($es, 10, 30);
-$v = json_decode($et, true);
+$ab = ['access_token' => $bi, 'domain_id' => $fh];
+$ey = self::makeUrl(self::API['userRole']);
+$ey = "{$ey}?access_token={$bi}&domain_id={$fh}";
+$ez = curl($ey, 10, 30);
+$v = json_decode($ez, true);
 self::_set_user_role($v);
 return $v;
 }
-public static function has_role($fk)
+public static function has_role($fp)
 {
 if (self::$user_role && isset(self::$user_role['roles'])) {
-$fl = self::$user_role['roles'];
-foreach ($fl as $k => $fj) {
-if ($fj['name'] == $fk) {
+$fq = self::$user_role['roles'];
+foreach ($fq as $k => $fo) {
+if ($fo['name'] == $fp) {
 return true;
 }
 }
 }
 return false;
 }
-public static function create_domain($fm, $fn, $ev = array())
+public static function create_domain($fr, $fs, $cg = array())
 {
-$bg = self::get_admin_token($ev);
-$ab = ['access_token' => $bg, 'domain_name' => $fm, 'description' => $fn];
-$es = self::makeUrl(self::API['createDomain']);
-$et = curl($es, 10, 30, $ab);
-$v = json_decode($et, true);
+$bi = self::get_admin_token($cg);
+$ab = ['access_token' => $bi, 'domain_name' => $fr, 'description' => $fs];
+$ey = self::makeUrl(self::API['createDomain']);
+$ez = curl($ey, 10, 30, $ab);
+$v = json_decode($ez, true);
 return $v;
 }
-public static function user_domain($bg)
+public static function user_domain($bi)
 {
-$ab = ['access_token' => $bg];
-$es = self::makeUrl(self::API['userdomain']);
-$es = "{$es}?access_token={$bg}";
-$et = curl($es, 10, 30);
-$v = json_decode($et, true);
+$ab = ['access_token' => $bi];
+$ey = self::makeUrl(self::API['userdomain']);
+$ey = "{$ey}?access_token={$bi}";
+$ez = curl($ey, 10, 30);
+$v = json_decode($ez, true);
 return $v;
 }
 public static function _set_pwd_user($v)
@@ -1341,19 +1424,19 @@ self::$user_role = $v['data'];
 }
 class vld
 {
-public static function test($br, $ab)
+public static function test($bu, $ab)
 {
 }
 public static function registration($ab)
 {
-$bv = new Valitron\Validator($ab);
-$fo = ['required' => [['name'], ['gender'], ['birthdate'], ['blood'], ['nationality'], ['country'], ['mobile'], ['emergency_contact_person'], ['emergency_mobile'], ['cloth_size']], 'length' => [['name', 4]], 'mobile' => [['mobile']]];
-$bv->rules($fo);
-$bv->labels(['name' => '名称', 'gender' => '性别', 'birthdate' => '生日']);
-if ($bv->validate()) {
+$by = new Valitron\Validator($ab);
+$ft = ['required' => [['name'], ['gender'], ['birthdate'], ['blood'], ['nationality'], ['country'], ['mobile'], ['emergency_contact_person'], ['emergency_mobile'], ['cloth_size']], 'length' => [['name', 4]], 'mobile' => [['mobile']]];
+$by->rules($ft);
+$by->labels(['name' => '名称', 'gender' => '性别', 'birthdate' => '生日']);
+if ($by->validate()) {
 return 0;
 } else {
-err($bv->errors());
+err($by->errors());
 }
 }
 }
@@ -1363,27 +1446,27 @@ use FastRoute\Dispatcher;
 use FastRoute\RouteParser\Std as StdParser;
 class TwigMid
 {
-public function __invoke($fp, $fq, $fr)
+public function __invoke($fu, $fv, $fw)
 {
 log_time("Twig Begin");
-$fq = $fr($fp, $fq);
-$fs = uripath($fp);
-debug(">>>>>> TwigMid START : {$fs}  <<<<<<");
-if ($ft = $this->getRoutePath($fp)) {
-$bo = \ctx::app()->getContainer()->view;
+$fv = $fw($fu, $fv);
+$fx = uripath($fu);
+debug(">>>>>> TwigMid START : {$fx}  <<<<<<");
+if ($fy = $this->getRoutePath($fu)) {
+$br = \ctx::app()->getContainer()->view;
 if (\ctx::isRetJson()) {
-ret($bo->data);
+ret($br->data);
 }
-$fu = rtrim($ft, '/');
-if ($fu == '/' || !$fu) {
-$fu = 'index';
+$fz = rtrim($fy, '/');
+if ($fz == '/' || !$fz) {
+$fz = 'index';
 }
-$bn = $fu;
+$bq = $fz;
 $ab = [];
-if (isset($bo->data)) {
-$ab = $bo->data;
-if (isset($bo->data['tpl'])) {
-$bn = $bo->data['tpl'];
+if (isset($br->data)) {
+$ab = $br->data;
+if (isset($br->data['tpl'])) {
+$bq = $br->data['tpl'];
 }
 }
 $ab['uid'] = \ctx::uid();
@@ -1393,26 +1476,26 @@ $ab['uri'] = \ctx::uri();
 $ab['t'] = time();
 $ab['domain'] = \cfg::get('wechat_callback_domain');
 $ab['gdata'] = \ctx::global_view_data();
-debug("<<<<<< TwigMid END : {$fs} >>>>>");
+debug("<<<<<< TwigMid END : {$fx} >>>>>");
 log_time("Twig End");
 log_time("Twig Total", 'begin');
-return $bo->render($fq, tpl($bn), $ab);
+return $br->render($fv, tpl($bq), $ab);
 } else {
-return $fq;
+return $fv;
 }
 }
-public function getRoutePath($fp)
+public function getRoutePath($fu)
 {
-$fv = \ctx::router()->dispatch($fp);
-if ($fv[0] === Dispatcher::FOUND) {
-$aj = \ctx::router()->lookupRoute($fv[1]);
-$fw = $aj->getPattern();
-$fx = new StdParser();
-$fy = $fx->parse($fw);
-foreach ($fy as $fz) {
-foreach ($fz as $dk) {
-if (is_string($dk)) {
-return $dk;
+$gh = \ctx::router()->dispatch($fu);
+if ($gh[0] === Dispatcher::FOUND) {
+$aj = \ctx::router()->lookupRoute($gh[1]);
+$gi = $aj->getPattern();
+$gj = new StdParser();
+$gk = $gj->parse($gi);
+foreach ($gk as $gl) {
+foreach ($gl as $ds) {
+if (is_string($ds)) {
+return $ds;
 }
 }
 }
@@ -1425,48 +1508,48 @@ namespace mid {
 class AuthMid
 {
 private $isAjax = false;
-public function __invoke($fp, $fq, $fr)
+public function __invoke($fu, $fv, $fw)
 {
 log_time("AuthMid Begin");
-$fs = uripath($fp);
-debug(">>>>>> AuthMid START : {$fs}  <<<<<<");
-\ctx::init($fp);
-$this->check_auth($fp, $fq);
-debug("<<<<<< AuthMid END : {$fs} >>>>>");
+$fx = uripath($fu);
+debug(">>>>>> AuthMid START : {$fx}  <<<<<<");
+\ctx::init($fu);
+$this->check_auth($fu, $fv);
+debug("<<<<<< AuthMid END : {$fx} >>>>>");
 log_time("AuthMid END");
-$fq = $fr($fp, $fq);
-return $fq;
+$fv = $fw($fu, $fv);
+return $fv;
 }
-public function isAjax($bp = '')
+public function isAjax($bs = '')
 {
-if ($bp) {
-if (startWith($bp, '/rest')) {
+if ($bs) {
+if (startWith($bs, '/rest')) {
 $this->isAjax = true;
 }
 }
 return $this->isAjax;
 }
-public function check_auth($z, $bl)
+public function check_auth($z, $bo)
 {
-list($gh, $ak, $gi) = $this->auth_cfg();
-$fs = uripath($z);
-$this->isAjax($fs);
-if ($fs == '/') {
+list($gm, $ak, $gn) = $this->auth_cfg();
+$fx = uripath($z);
+$this->isAjax($fx);
+if ($fx == '/') {
 return true;
 }
-$gj = $this->check_list($gh, $fs);
-if ($gj) {
+$go = $this->check_list($gm, $fx);
+if ($go) {
 $this->check_admin();
 }
-$gk = $this->check_list($ak, $fs);
-if ($gk) {
+$gp = $this->check_list($ak, $fx);
+if ($gp) {
 $this->check_user();
 }
-$gl = $this->check_list($gi, $fs);
-if (!$gl) {
+$gq = $this->check_list($gn, $fx);
+if (!$gq) {
 $this->check_user();
 }
-info("check_auth: {$fs} admin:[{$gj}] user:[{$gk}] pub:[{$gl}]");
+info("check_auth: {$fx} admin:[{$go}] user:[{$gp}] pub:[{$gq}]");
 }
 public function check_admin()
 {
@@ -1481,37 +1564,37 @@ if (!\ctx::user()) {
 $this->auth_error();
 }
 }
-public function auth_error($gm = 1)
+public function auth_error($gr = 1)
 {
-$gn = is_weixin();
-$go = isMobile();
-$gp = \cfg::get('wechat_callback_domain');
-info("auth_error: errorid: {$gm}, is_weixin: {$gn} , is_mobile: {$go}");
-$gq = $_SERVER['REQUEST_URI'];
-if ($gn) {
-header("Location: {$gp}/auth/wechat?_r={$gq}");
+$gs = is_weixin();
+$gt = isMobile();
+$gu = \cfg::get('wechat_callback_domain');
+info("auth_error: errorid: {$gr}, is_weixin: {$gs} , is_mobile: {$gt}");
+$gv = $_SERVER['REQUEST_URI'];
+if ($gs) {
+header("Location: {$gu}/auth/wechat?_r={$gv}");
 exit;
 }
-if ($go) {
-header("Location: {$gp}/auth/openwechat?_r={$gq}");
+if ($gt) {
+header("Location: {$gu}/auth/openwechat?_r={$gv}");
 exit;
 }
 if ($this->isAjax()) {
-ret($gm, 'auth error');
+ret($gr, 'auth error');
 } else {
-header('Location: /?_r=' . $gq);
+header('Location: /?_r=' . $gv);
 exit;
 }
 }
 public function auth_cfg()
 {
-$gr = \cfg::get('auth');
-return [$gr['admin'], $gr['user'], $gr['public']];
+$gw = \cfg::get('auth');
+return [$gw['admin'], $gw['user'], $gw['public']];
 }
-public function check_list($ai, $fs)
+public function check_list($ai, $fx)
 {
-foreach ($ai as $bp) {
-if (startWith($fs, $bp)) {
+foreach ($ai as $bs) {
+if (startWith($fx, $bs)) {
 return true;
 }
 }
@@ -1526,40 +1609,40 @@ use \core\PropGeneratorTrait;
 private $name = 'Base';
 private $classname = '';
 private $path_info = '';
-public function __invoke($fp, $fq, $fr)
+public function __invoke($fu, $fv, $fw)
 {
-$this->init($fp, $fq, $fr);
+$this->init($fu, $fv, $fw);
 log_time("{$this->classname} Begin");
-$this->path_info = uripath($fp);
+$this->path_info = uripath($fu);
 debug(">>>>>> {$this->name}Mid START : {$this->path_info}  <<<<<<");
-$this->handelReq($fp, $fq);
+$this->handelReq($fu, $fv);
 debug("<<<<<< {$this->name}Mid END : {$this->path_info} >>>>>");
 log_time("{$this->classname} End");
-$fq = $fr($fp, $fq);
-return $fq;
+$fv = $fw($fu, $fv);
+return $fv;
 }
-public function handelReq($z, $bl)
+public function handelReq($z, $bo)
 {
-$bp = \cfg::get($this->classname, 'mid.yml');
-if (is_array($bp)) {
-$this->handlePathArray($bp, $z, $bl);
+$bs = \cfg::get($this->classname, 'mid.yml');
+if (is_array($bs)) {
+$this->handlePathArray($bs, $z, $bo);
 } else {
-if (startWith($this->path_info, $bp)) {
-$this->handlePath($z, $bl);
+if (startWith($this->path_info, $bs)) {
+$this->handlePath($z, $bo);
 }
 }
 }
-public function handlePathArray($gs, $z, $bl)
+public function handlePathArray($gx, $z, $bo)
 {
-foreach ($gs as $bp => $gt) {
-if (startWith($this->path_info, $bp)) {
-debug("{$this->path_info} match {$bp} {$gt}");
-$this->{$gt}($z, $bl);
+foreach ($gx as $bs => $gy) {
+if (startWith($this->path_info, $bs)) {
+debug("{$this->path_info} match {$bs} {$gy}");
+$this->{$gy}($z, $bo);
 break;
 }
 }
 }
-public function handlePath($z, $bl)
+public function handlePath($z, $bo)
 {
 debug("handle Path {$this->path_info} .....");
 }
@@ -1573,26 +1656,26 @@ class RestMid
 {
 private $path_info;
 private $rest_prefix;
-public function __invoke($fp, $fq, $fr)
+public function __invoke($fu, $fv, $fw)
 {
 log_time("RestMid Begin");
-$this->path_info = uripath($fp);
+$this->path_info = uripath($fu);
 $this->rest_prefix = \cfg::get_rest_prefix();
 debug(">>>>>> RestMid START : {$this->path_info}  <<<<<<");
-if ($this->isRest($fp)) {
+if ($this->isRest($fu)) {
 info("====== RestMid Handle REST: {$this->path_info}  =======");
-if ($this->isApiDoc($fp)) {
-$this->apiDoc($fp);
+if ($this->isApiDoc($fu)) {
+$this->apiDoc($fu);
 } else {
-$this->handelRest($fp);
+$this->handelRest($fu);
 }
 } else {
 debug("====== RestMid PASS REST: {$this->path_info}  =======");
 }
 debug("<<<<<< RestMid END : {$this->path_info}  >>>>>");
 log_time("RestMid Begin");
-$fq = $fr($fp, $fq);
-return $fq;
+$fv = $fw($fu, $fv);
+return $fv;
 }
 public function isApiDoc($z)
 {
@@ -1604,52 +1687,52 @@ return startWith($this->path_info, $this->rest_prefix);
 }
 public function handelRest($z)
 {
-$bp = str_replace($this->rest_prefix, '', $this->path_info);
-$bq = explode('/', $bp);
-$br = getArg($bq, 1, '');
-$bs = getArg($bq, 2, '');
-$gt = $z->getMethod();
-info(" method: {$gt}, name: {$br}, id: {$bs}");
-$gu = "handle{$gt}";
-$this->{$gu}($z, $br, $bs);
+$bs = str_replace($this->rest_prefix, '', $this->path_info);
+$bt = explode('/', $bs);
+$bu = getArg($bt, 1, '');
+$bv = getArg($bt, 2, '');
+$gy = $z->getMethod();
+info(" method: {$gy}, name: {$bu}, id: {$bv}");
+$gz = "handle{$gy}";
+$this->{$gz}($z, $bu, $bv);
 }
-public function handleGET($z, $br, $bs)
+public function handleGET($z, $bu, $bv)
 {
-if ($bs) {
-rest::renderItem($br, $bs);
+if ($bv) {
+rest::renderItem($bu, $bv);
 } else {
-rest::renderList($br);
+rest::renderList($bu);
 }
 }
-public function handlePOST($z, $br, $bs)
+public function handlePOST($z, $bu, $bv)
 {
-self::beforeData($br, 'post');
-rest::renderPostData($br);
+self::beforeData($bu, 'post');
+rest::renderPostData($bu);
 }
-public function handlePUT($z, $br, $bs)
+public function handlePUT($z, $bu, $bv)
 {
-self::beforeData($br, 'put');
-rest::renderPutData($br, $bs);
+self::beforeData($bu, 'put');
+rest::renderPutData($bu, $bv);
 }
-public function handleDELETE($z, $br, $bs)
+public function handleDELETE($z, $bu, $bv)
 {
-rest::delete($z, $br, $bs);
+rest::delete($z, $bu, $bv);
 }
-public function handleOPTIONS($z, $br, $bs)
+public function handleOPTIONS($z, $bu, $bv)
 {
 sendJson([]);
 }
-public function beforeData($br, $c)
+public function beforeData($bu, $c)
 {
-$gv = \cfg::get('rest_maps', 'rest.yml');
-if (isset($gv[$br])) {
-$m = $gv[$br][$c];
+$hi = \cfg::get('rest_maps', 'rest.yml');
+if (isset($hi[$bu])) {
+$m = $hi[$bu][$c];
 if ($m) {
-$gw = $m['xmap'];
-if ($gw) {
+$hj = $m['xmap'];
+if ($hj) {
 $ab = \ctx::data();
-foreach ($gw as $bu => $bv) {
-unset($ab[$bv]);
+foreach ($hj as $bx => $by) {
+unset($ab[$by]);
 }
 \ctx::data($ab);
 }
@@ -1658,8 +1741,8 @@ unset($ab[$bv]);
 }
 public function apiDoc($z)
 {
-$gx = rd::genApi();
-echo $gx;
+$hk = rd::genApi();
+echo $hk;
 die;
 }
 }
@@ -1670,318 +1753,318 @@ use db\RestHelper;
 class Rest
 {
 private static $tbl_desc = array();
-public static function whereStr($cs, $br)
+public static function whereStr($de, $bu)
 {
 $v = '';
-foreach ($cs as $bu => $bv) {
-$fw = '/(.*)\\{(.*)\\}/i';
-$bt = preg_match($fw, $bu, $gy);
-$gz = '=';
-if ($gy) {
-$hi = $gy[1];
-$gz = $gy[2];
+foreach ($de as $bx => $by) {
+$gi = '/(.*)\\{(.*)\\}/i';
+$bw = preg_match($gi, $bx, $hl);
+$hm = '=';
+if ($hl) {
+$hn = $hl[1];
+$hm = $hl[2];
 } else {
-$hi = $bu;
+$hn = $bx;
 }
-if ($hj = db::valid_table_col($br, $hi)) {
-if ($hj == 2) {
-if ($gz == 'in') {
-$bv = implode("','", $bv);
-$v .= " and t1.{$hi} {$gz} ('{$bv}')";
+if ($ho = db::valid_table_col($bu, $hn)) {
+if ($ho == 2) {
+if ($hm == 'in') {
+$by = implode("','", $by);
+$v .= " and t1.{$hn} {$hm} ('{$by}')";
 } else {
-$v .= " and t1.{$hi}{$gz}'{$bv}'";
-}
-} else {
-if ($gz == 'in') {
-$bv = implode(',', $bv);
-$v .= " and t1.{$hi} {$gz} ({$bv})";
-} else {
-$v .= " and t1.{$hi}{$gz}{$bv}";
-}
+$v .= " and t1.{$hn}{$hm}'{$by}'";
 }
 } else {
+if ($hm == 'in') {
+$by = implode(',', $by);
+$v .= " and t1.{$hn} {$hm} ({$by})";
+} else {
+$v .= " and t1.{$hn}{$hm}{$by}";
 }
-info("[{$br}] [{$hi}] [{$hj}] {$v}");
+}
+} else {
+}
+info("[{$bu}] [{$hn}] [{$ho}] {$v}");
 }
 return $v;
 }
-public static function getSqlFrom($br, $hk, $bc, $hl, $hm, $ev = array())
+public static function getSqlFrom($bu, $hp, $be, $hq, $hr, $cg = array())
 {
-$hn = isset($_GET['tags']) ? 1 : isset($ev['tags']) ? 1 : 0;
-$ho = isset($_GET['isar']) ? 1 : 0;
-$hp = RestHelper::get_rest_xwh_tags_list();
-if ($hp && in_array($br, $hp)) {
-$hn = 0;
+$hs = isset($_GET['tags']) ? 1 : isset($cg['tags']) ? 1 : 0;
+$ht = isset($_GET['isar']) ? 1 : 0;
+$hu = RestHelper::get_rest_xwh_tags_list();
+if ($hu && in_array($bu, $hu)) {
+$hs = 0;
 }
-$hq = isset($ev['force_ar']) || RestHelper::isAdmin() && $ho ? "1=1" : "t1.uid={$bc}";
-if ($hn) {
-$hr = isset($_GET['tags']) ? get('tags') : $ev['tags'];
-if ($hr && is_array($hr) && count($hr) == 1 && !$hr[0]) {
-$hr = '';
+$hv = isset($cg['force_ar']) || RestHelper::isAdmin() && $ht ? "1=1" : "t1.uid={$be}";
+if ($hs) {
+$hw = isset($_GET['tags']) ? get('tags') : $cg['tags'];
+if ($hw && is_array($hw) && count($hw) == 1 && !$hw[0]) {
+$hw = '';
 }
-$hs = '';
-$ht = 'not in';
-if ($hr) {
-if (is_string($hr)) {
-$hr = [$hr];
+$hx = '';
+$hy = 'not in';
+if ($hw) {
+if (is_string($hw)) {
+$hw = [$hw];
 }
-$hu = implode("','", $hr);
-$hs = "and `name` in ('{$hu}')";
-$ht = 'in';
-$hv = " from {$br} t1\n                               join tag_items t on t1.id=t.`oid`\n                               {$hk}\n                               where {$hq} and t._st=1  and t.tagid {$ht}\n                               (select id from tags where type='{$br}' {$hs} )\n                               {$hm}";
+$hz = implode("','", $hw);
+$hx = "and `name` in ('{$hz}')";
+$hy = 'in';
+$ij = " from {$bu} t1\n                               join tag_items t on t1.id=t.`oid`\n                               {$hp}\n                               where {$hv} and t._st=1  and t.tagid {$hy}\n                               (select id from tags where type='{$bu}' {$hx} )\n                               {$hr}";
 } else {
-$hv = " from {$br} t1\n                              {$hk}\n                              where {$hq} and t1.id not in\n                              (select oid from tag_items where type='{$br}')\n                              {$hm}";
+$ij = " from {$bu} t1\n                              {$hp}\n                              where {$hv} and t1.id not in\n                              (select oid from tag_items where type='{$bu}')\n                              {$hr}";
 }
 } else {
-$hw = $hq;
+$ik = $hv;
 if (RestHelper::isAdmin()) {
-if ($br == RestHelper::user_tbl()) {
-$hw = "t1.id={$bc}";
+if ($bu == RestHelper::user_tbl()) {
+$ik = "t1.id={$be}";
 }
 }
-$hv = "from {$br} t1 {$hk} where {$hw} {$hl} {$hm}";
+$ij = "from {$bu} t1 {$hp} where {$ik} {$hq} {$hr}";
 }
-return $hv;
+return $ij;
 }
-public static function getSql($br, $ev = array())
+public static function getSql($bu, $cg = array())
 {
-$bc = RestHelper::uid();
-$hx = RestHelper::get('sort', '_intm');
-$hy = RestHelper::get('asc', -1);
-if (!db::valid_table_col($br, $hx)) {
-$hx = '_intm';
+$be = RestHelper::uid();
+$il = RestHelper::get('sort', '_intm');
+$im = RestHelper::get('asc', -1);
+if (!db::valid_table_col($bu, $il)) {
+$il = '_intm';
 }
-$hy = $hy > 0 ? 'asc' : 'desc';
-$hm = " order by t1.{$hx} {$hy}";
-$hz = RestHelper::gets();
-$hz = un_select_keys(['sort', 'asc'], $hz);
-$ij = RestHelper::get('_st', 1);
-$cs = dissoc($hz, ['token', '_st']);
-if ($ij != 'all') {
-$cs['_st'] = $ij;
+$im = $im > 0 ? 'asc' : 'desc';
+$hr = " order by t1.{$il} {$im}";
+$in = RestHelper::gets();
+$in = un_select_keys(['sort', 'asc'], $in);
+$io = RestHelper::get('_st', 1);
+$de = dissoc($in, ['token', '_st']);
+if ($io != 'all') {
+$de['_st'] = $io;
 }
-$hl = self::whereStr($cs, $br);
-$ik = RestHelper::get('search', '');
-$il = RestHelper::get('search-key', '');
-if ($ik && $il) {
-$hl .= " and {$il} like '%{$ik}%'";
+$hq = self::whereStr($de, $bu);
+$ip = RestHelper::get('search', '');
+$iq = RestHelper::get('search-key', '');
+if ($ip && $iq) {
+$hq .= " and {$iq} like '%{$ip}%'";
 }
-$im = RestHelper::select_add();
-$hk = RestHelper::join_add();
-$hv = self::getSqlFrom($br, $hk, $bc, $hl, $hm, $ev);
-$cj = "select t1.* {$im} {$hv}";
-$in = "select count(*) cnt {$hv}";
+$ir = RestHelper::select_add();
+$hp = RestHelper::join_add();
+$ij = self::getSqlFrom($bu, $hp, $be, $hq, $hr, $cg);
+$cr = "select t1.* {$ir} {$ij}";
+$is = "select count(*) cnt {$ij}";
 $ag = RestHelper::offset();
 $af = RestHelper::pagesize();
-$cj .= " limit {$ag},{$af}";
-return [$cj, $in];
+$cr .= " limit {$ag},{$af}";
+return [$cr, $is];
 }
-public static function getResName($br, $ev)
+public static function getResName($bu, $cg)
 {
-$io = getArg($ev, 'res_name', '');
-if ($io) {
-return $io;
+$it = getArg($cg, 'res_name', '');
+if ($it) {
+return $it;
 }
-$ip = RestHelper::get('res_id_key', '');
-if ($ip) {
-$iq = RestHelper::get($ip);
-$br .= '_' . $iq;
+$iu = RestHelper::get('res_id_key', '');
+if ($iu) {
+$iv = RestHelper::get($iu);
+$bu .= '_' . $iv;
 }
-return $br;
+return $bu;
 }
-public static function getList($br, $ev = array())
+public static function getList($bu, $cg = array())
 {
-$bc = RestHelper::uid();
-list($cj, $in) = self::getSql($br, $ev);
-info($cj);
-$cp = db::query($cj);
-$ap = (int) db::queryOne($in);
-$ir = RestHelper::get_rest_join_tags_list();
-if ($ir && in_array($br, $ir)) {
-$is = getKeyValues($cp, 'id');
-$hr = RestHelper::get_tags_by_oid($bc, $is, $br);
-info("get tags ok: {$bc} {$br} " . json_encode($is));
-foreach ($cp as $bu => $df) {
-if (isset($hr[$df['id']])) {
-$it = $hr[$df['id']];
-$cp[$bu]['tags'] = getKeyValues($it, 'name');
+$be = RestHelper::uid();
+list($cr, $is) = self::getSql($bu, $cg);
+info($cr);
+$cx = db::query($cr);
+$ap = (int) db::queryOne($is);
+$iw = RestHelper::get_rest_join_tags_list();
+if ($iw && in_array($bu, $iw)) {
+$ix = getKeyValues($cx, 'id');
+$hw = RestHelper::get_tags_by_oid($be, $ix, $bu);
+info("get tags ok: {$be} {$bu} " . json_encode($ix));
+foreach ($cx as $bx => $dn) {
+if (isset($hw[$dn['id']])) {
+$iy = $hw[$dn['id']];
+$cx[$bx]['tags'] = getKeyValues($iy, 'name');
 }
 }
 info('set tags ok');
 }
-if (isset($ev['join_cols'])) {
-foreach ($ev['join_cols'] as $iu => $iv) {
-$iw = getArg($iv, 'jtype', '1-1');
-$ix = getArg($iv, 'jkeys', []);
-$iy = getArg($iv, 'jwhe', []);
-$iz = getArg($iv, 'ast', ['id' => 'ASC']);
-if (is_string($iv['on'])) {
-$jk = 'id';
-$jl = $iv['on'];
+if (isset($cg['join_cols'])) {
+foreach ($cg['join_cols'] as $iz => $jk) {
+$jl = getArg($jk, 'jtype', '1-1');
+$jm = getArg($jk, 'jkeys', []);
+$jn = getArg($jk, 'jwhe', []);
+$jo = getArg($jk, 'ast', ['id' => 'ASC']);
+if (is_string($jk['on'])) {
+$jp = 'id';
+$jq = $jk['on'];
 } else {
-if (is_array($iv['on'])) {
-$jm = array_keys($iv['on']);
-$jk = $jm[0];
-$jl = $iv['on'][$jk];
+if (is_array($jk['on'])) {
+$jr = array_keys($jk['on']);
+$jp = $jr[0];
+$jq = $jk['on'][$jp];
 }
 }
-$is = getKeyValues($cp, $jk);
-$iy[$jl] = $is;
-$jn = \db::all($iu, ['AND' => $iy, 'ORDER' => $iz]);
-foreach ($jn as $k => $jo) {
-foreach ($cp as $bu => &$df) {
-if (isset($df[$jk]) && isset($jo[$jl]) && $df[$jk] == $jo[$jl]) {
-if ($iw == '1-1') {
-foreach ($ix as $jp => $jq) {
-$df[$jq] = $jo[$jp];
+$ix = getKeyValues($cx, $jp);
+$jn[$jq] = $ix;
+$js = \db::all($iz, ['AND' => $jn, 'ORDER' => $jo]);
+foreach ($js as $k => $jt) {
+foreach ($cx as $bx => &$dn) {
+if (isset($dn[$jp]) && isset($jt[$jq]) && $dn[$jp] == $jt[$jq]) {
+if ($jl == '1-1') {
+foreach ($jm as $ju => $jv) {
+$dn[$jv] = $jt[$ju];
 }
 }
-$jp = isset($iv['jkey']) ? $iv['jkey'] : $iu;
-if ($iw == '1-n') {
-$df[$jp][] = $jo[$jp];
+$ju = isset($jk['jkey']) ? $jk['jkey'] : $iz;
+if ($jl == '1-n') {
+$dn[$ju][] = $jt[$ju];
 }
-if ($iw == '1-n-o') {
-$df[$jp][] = $jo;
+if ($jl == '1-n-o') {
+$dn[$ju][] = $jt;
 }
-if ($iw == '1-1-o') {
-$df[$jp] = $jo;
-}
-}
-}
+if ($jl == '1-1-o') {
+$dn[$ju] = $jt;
 }
 }
 }
-$io = self::getResName($br, $ev);
+}
+}
+}
+$it = self::getResName($bu, $cg);
 \ctx::count($ap);
-$jr = ['pageinfo' => \ctx::pageinfo()];
-return ['data' => $cp, 'res-name' => $io, 'count' => $ap, 'meta' => $jr];
+$jw = ['pageinfo' => \ctx::pageinfo()];
+return ['data' => $cx, 'res-name' => $it, 'count' => $ap, 'meta' => $jw];
 }
-public static function renderList($br)
+public static function renderList($bu)
 {
-ret(self::getList($br));
+ret(self::getList($bu));
 }
-public static function getItem($br, $bs)
+public static function getItem($bu, $bv)
 {
-$bc = RestHelper::uid();
-info("---GET---: {$br}/{$bs}");
-$io = "{$br}-{$bs}";
-if ($br == 'colls') {
-$dk = db::row($br, ["{$br}.id" => $bs], ["{$br}.id", "{$br}.title", "{$br}.from_url", "{$br}._intm", "{$br}._uptm", "posts.content"], ['[>]posts' => ['uuid' => 'uuid']]);
+$be = RestHelper::uid();
+info("---GET---: {$bu}/{$bv}");
+$it = "{$bu}-{$bv}";
+if ($bu == 'colls') {
+$ds = db::row($bu, ["{$bu}.id" => $bv], ["{$bu}.id", "{$bu}.title", "{$bu}.from_url", "{$bu}._intm", "{$bu}._uptm", "posts.content"], ['[>]posts' => ['uuid' => 'uuid']]);
 } else {
-if ($br == 'feeds') {
+if ($bu == 'feeds') {
 $c = RestHelper::get('type');
-$js = RestHelper::get('rid');
-$dk = db::row($br, ['AND' => ['uid' => $bc, 'rid' => $bs, 'type' => $c]]);
-if (!$dk) {
-$dk = ['rid' => $bs, 'type' => $c, 'excerpt' => '', 'title' => ''];
+$jx = RestHelper::get('rid');
+$ds = db::row($bu, ['AND' => ['uid' => $be, 'rid' => $bv, 'type' => $c]]);
+if (!$ds) {
+$ds = ['rid' => $bv, 'type' => $c, 'excerpt' => '', 'title' => ''];
 }
-$io = "{$io}-{$c}-{$bs}";
+$it = "{$it}-{$c}-{$bv}";
 } else {
-$dk = db::row($br, ['id' => $bs]);
+$ds = db::row($bu, ['id' => $bv]);
 }
 }
-if ($jt = RestHelper::rest_extra_data()) {
-$dk = array_merge($dk, $jt);
+if ($jy = RestHelper::rest_extra_data()) {
+$ds = array_merge($ds, $jy);
 }
-return ['data' => $dk, 'res-name' => $io, 'count' => 1];
+return ['data' => $ds, 'res-name' => $it, 'count' => 1];
 }
-public static function renderItem($br, $bs)
+public static function renderItem($bu, $bv)
 {
-ret(self::getItem($br, $bs));
+ret(self::getItem($bu, $bv));
 }
-public static function postData($br)
+public static function postData($bu)
 {
-$ab = db::tbl_data($br, RestHelper::data());
-$bc = RestHelper::uid();
-$hr = [];
-if ($br == 'tags') {
-$hr = RestHelper::get_tag_by_name($bc, $ab['name'], $ab['type']);
+$ab = db::tbl_data($bu, RestHelper::data());
+$be = RestHelper::uid();
+$hw = [];
+if ($bu == 'tags') {
+$hw = RestHelper::get_tag_by_name($be, $ab['name'], $ab['type']);
 }
-if ($hr && $br == 'tags') {
-$ab = $hr[0];
+if ($hw && $bu == 'tags') {
+$ab = $hw[0];
 } else {
-info("---POST---: {$br} " . json_encode($ab));
+info("---POST---: {$bu} " . json_encode($ab));
 unset($ab['token']);
 $ab['_intm'] = date('Y-m-d H:i:s');
 if (!isset($ab['uid'])) {
-$ab['uid'] = $bc;
+$ab['uid'] = $be;
 }
-$ab = db::tbl_data($br, $ab);
-$ab = db::save($br, $ab);
+$ab = db::tbl_data($bu, $ab);
+$ab = db::save($bu, $ab);
 }
 return $ab;
 }
-public static function renderPostData($br)
+public static function renderPostData($bu)
 {
-$ab = self::postData($br);
+$ab = self::postData($bu);
 ret($ab);
 }
-public static function putData($br, $bs)
+public static function putData($bu, $bv)
 {
-if ($bs == 0 || $bs == '' || trim($bs) == '') {
+if ($bv == 0 || $bv == '' || trim($bv) == '') {
 info(" PUT ID IS EMPTY !!!");
 ret();
 }
-$bc = RestHelper::uid();
+$be = RestHelper::uid();
 $ab = RestHelper::data();
 unset($ab['token']);
 unset($ab['uniqid']);
-self::checkOwner($br, $bs, $bc);
+self::checkOwner($bu, $bv, $be);
 if (isset($ab['inc'])) {
-$ju = $ab['inc'];
+$jz = $ab['inc'];
 unset($ab['inc']);
-db::exec("UPDATE {$br} SET {$ju} = {$ju} + 1 WHERE id={$bs}");
+db::exec("UPDATE {$bu} SET {$jz} = {$jz} + 1 WHERE id={$bv}");
 }
 if (isset($ab['dec'])) {
-$ju = $ab['dec'];
+$jz = $ab['dec'];
 unset($ab['dec']);
-db::exec("UPDATE {$br} SET {$ju} = {$ju} - 1 WHERE id={$bs}");
+db::exec("UPDATE {$bu} SET {$jz} = {$jz} - 1 WHERE id={$bv}");
 }
 if (isset($ab['tags'])) {
-RestHelper::del_tag_by_name($bc, $bs, $br);
-$hr = $ab['tags'];
-foreach ($hr as $jv) {
-$jw = RestHelper::get_tag_by_name($bc, $jv, $br);
-if ($jw) {
-$jx = $jw[0]['id'];
-RestHelper::save_tag_items($bc, $jx, $bs, $br);
+RestHelper::del_tag_by_name($be, $bv, $bu);
+$hw = $ab['tags'];
+foreach ($hw as $kl) {
+$km = RestHelper::get_tag_by_name($be, $kl, $bu);
+if ($km) {
+$kn = $km[0]['id'];
+RestHelper::save_tag_items($be, $kn, $bv, $bu);
 }
 }
 }
-info("---PUT---: {$br}/{$bs} " . json_encode($ab));
-$ab = db::tbl_data($br, $ab);
-$ab['id'] = $bs;
-db::save($br, $ab);
+info("---PUT---: {$bu}/{$bv} " . json_encode($ab));
+$ab = db::tbl_data($bu, $ab);
+$ab['id'] = $bv;
+db::save($bu, $ab);
 return $ab;
 }
-public static function renderPutData($br, $bs)
+public static function renderPutData($bu, $bv)
 {
-$ab = self::putData($br, $bs);
+$ab = self::putData($bu, $bv);
 ret($ab);
 }
-public static function delete($z, $br, $bs)
+public static function delete($z, $bu, $bv)
 {
-$bc = RestHelper::uid();
-self::checkOwner($br, $bs, $bc);
-db::save($br, ['_st' => 0, 'id' => $bs]);
+$be = RestHelper::uid();
+self::checkOwner($bu, $bv, $be);
+db::save($bu, ['_st' => 0, 'id' => $bv]);
 ret([]);
 }
-public static function checkOwner($br, $bs, $bc)
+public static function checkOwner($bu, $bv, $be)
 {
-$cs = ['AND' => ['id' => $bs], 'LIMIT' => 1];
-$cp = db::obj()->select($br, '*', $cs);
-if ($cp) {
-$dk = $cp[0];
+$de = ['AND' => ['id' => $bv], 'LIMIT' => 1];
+$cx = db::obj()->select($bu, '*', $de);
+if ($cx) {
+$ds = $cx[0];
 } else {
-$dk = null;
+$ds = null;
 }
-if ($dk) {
-if (array_key_exists('uid', $dk)) {
-$jy = $dk['uid'];
-if ($br == RestHelper::user_tbl()) {
-$jy = $dk['id'];
+if ($ds) {
+if (array_key_exists('uid', $ds)) {
+$ko = $ds['uid'];
+if ($bu == RestHelper::user_tbl()) {
+$ko = $ds['id'];
 }
-if ($jy != $bc && (!RestHelper::isAdmin() || !RestHelper::isAdminRest())) {
+if ($ko != $be && (!RestHelper::isAdmin() || !RestHelper::isAdminRest())) {
 ret(311, 'owner error');
 }
 } else {
@@ -1999,10 +2082,10 @@ namespace db {
 class RestHelper
 {
 private static $_ins = null;
-public static function ins($jz = null)
+public static function ins($kp = null)
 {
-if ($jz) {
-self::$_ins = $jz;
+if ($kp) {
+self::$_ins = $kp;
 }
 if (!self::$_ins && class_exists('\\db\\RestHelperIns')) {
 self::$_ins = new \db\RestHelperIns();
@@ -2021,21 +2104,21 @@ public static function rest_extra_data()
 {
 return self::ins()->rest_extra_data();
 }
-public static function get_tags_by_oid($bc, $is, $br)
+public static function get_tags_by_oid($be, $ix, $bu)
 {
-return self::ins()->get_tags_by_oid($bc, $is, $br);
+return self::ins()->get_tags_by_oid($be, $ix, $bu);
 }
-public static function get_tag_by_name($bc, $br, $c)
+public static function get_tag_by_name($be, $bu, $c)
 {
-return self::ins()->get_tag_by_name($bc, $br, $c);
+return self::ins()->get_tag_by_name($be, $bu, $c);
 }
-public static function del_tag_by_name($bc, $bs, $br)
+public static function del_tag_by_name($be, $bv, $bu)
 {
-return self::ins()->del_tag_by_name($bc, $bs, $br);
+return self::ins()->del_tag_by_name($be, $bv, $bu);
 }
-public static function save_tag_items($bc, $jx, $bs, $br)
+public static function save_tag_items($be, $kn, $bv, $bu)
 {
-return self::ins()->save_tag_items($bc, $jx, $bs, $br);
+return self::ins()->save_tag_items($be, $kn, $bv, $bu);
 }
 public static function isAdmin()
 {
@@ -2057,9 +2140,9 @@ public static function uid()
 {
 return self::ins()->uid();
 }
-public static function get($bu, $kl = '')
+public static function get($bx, $kq = '')
 {
-return self::ins()->get($bu, $kl);
+return self::ins()->get($bx, $kq);
 }
 public static function gets()
 {
@@ -2089,16 +2172,16 @@ interface RestHelperIF
 public function get_rest_xwh_tags_list();
 public function get_rest_join_tags_list();
 public function rest_extra_data();
-public function get_tags_by_oid($bc, $is, $br);
-public function get_tag_by_name($bc, $br, $c);
-public function del_tag_by_name($bc, $bs, $br);
-public function save_tag_items($bc, $jx, $bs, $br);
+public function get_tags_by_oid($be, $ix, $bu);
+public function get_tag_by_name($be, $bu, $c);
+public function del_tag_by_name($be, $bv, $bu);
+public function save_tag_items($be, $kn, $bv, $bu);
 public function isAdmin();
 public function isAdminRest();
 public function user_tbl();
 public function data();
 public function uid();
-public function get($bu, $kl);
+public function get($bx, $kq);
 public function gets();
 public function select_add();
 public function join_add();
@@ -2122,21 +2205,21 @@ public function rest_extra_data()
 {
 return \ctx::rest_extra_data();
 }
-public function get_tags_by_oid($bc, $is, $br)
+public function get_tags_by_oid($be, $ix, $bu)
 {
-return tag::getTagsByOids($bc, $is, $br);
+return tag::getTagsByOids($be, $ix, $bu);
 }
-public function get_tag_by_name($bc, $br, $c)
+public function get_tag_by_name($be, $bu, $c)
 {
-return tag::getTagByName($bc, $br, $c);
+return tag::getTagByName($be, $bu, $c);
 }
-public function del_tag_by_name($bc, $bs, $br)
+public function del_tag_by_name($be, $bv, $bu)
 {
-return tag::delTagByOid($bc, $bs, $br);
+return tag::delTagByOid($be, $bv, $bu);
 }
-public function save_tag_items($bc, $jx, $bs, $br)
+public function save_tag_items($be, $kn, $bv, $bu)
 {
-return tag::saveTagItems($bc, $jx, $bs, $br);
+return tag::saveTagItems($be, $kn, $bv, $bu);
 }
 public function isAdmin()
 {
@@ -2158,9 +2241,9 @@ public function uid()
 {
 return \ctx::uid();
 }
-public function get($bu, $kl)
+public function get($bx, $kq)
 {
-return get($bu, $kl);
+return get($bx, $kq);
 }
 public function gets()
 {
@@ -2189,128 +2272,88 @@ class Tagx
 {
 public static $tbl_name = 'tags';
 public static $tbl_items_name = 'tag_items';
-public static function getTagByName($bc, $jv, $c)
+public static function getTagByName($be, $kl, $c)
 {
-$hr = \db::all(self::$tbl_name, ['AND' => ['uid' => $bc, 'name' => $jv, 'type' => $c, '_st' => 1]]);
-return $hr;
+$hw = \db::all(self::$tbl_name, ['AND' => ['uid' => $be, 'name' => $kl, 'type' => $c, '_st' => 1]]);
+return $hw;
 }
-public static function delTagByOid($bc, $km, $kn)
+public static function delTagByOid($be, $kr, $ks)
 {
-info("del tag: {$bc}, {$km}, {$kn}");
-$v = \db::update(self::$tbl_items_name, ['_st' => 0], ['AND' => ['uid' => $bc, 'oid' => $km, 'type' => $kn]]);
+info("del tag: {$be}, {$kr}, {$ks}");
+$v = \db::update(self::$tbl_items_name, ['_st' => 0], ['AND' => ['uid' => $be, 'oid' => $kr, 'type' => $ks]]);
 info($v);
 }
-public static function saveTagItems($bc, $ko, $km, $kn)
+public static function saveTagItems($be, $kt, $kr, $ks)
 {
-\db::save('tag_items', ['tagid' => $ko, 'uid' => $bc, 'oid' => $km, 'type' => $kn, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')]);
+\db::save('tag_items', ['tagid' => $kt, 'uid' => $be, 'oid' => $kr, 'type' => $ks, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')]);
 }
-public static function getTagsByType($bc, $c)
+public static function getTagsByType($be, $c)
 {
-$hr = \db::all(self::$tbl_name, ['AND' => ['uid' => $bc, 'type' => $c, '_st' => 1]]);
-return $hr;
+$hw = \db::all(self::$tbl_name, ['AND' => ['uid' => $be, 'type' => $c, '_st' => 1]]);
+return $hw;
 }
-public static function getTagsByOid($bc, $km, $c)
+public static function getTagsByOid($be, $kr, $c)
 {
-$cj = "select * from tags t1 join tag_items t2 on t1.id = t2.tagid where t2.oid={$km} and t2.type='{$c}' and t2._st=1";
-$cp = \db::query($cj);
-return getKeyValues($cp, 'name');
+$cr = "select * from tags t1 join tag_items t2 on t1.id = t2.tagid where t2.oid={$kr} and t2.type='{$c}' and t2._st=1";
+$cx = \db::query($cr);
+return getKeyValues($cx, 'name');
 }
-public static function getTagsByOids($bc, $kp, $c)
+public static function getTagsByOids($be, $ku, $c)
 {
-if (is_array($kp)) {
-$kp = implode(',', $kp);
+if (is_array($ku)) {
+$ku = implode(',', $ku);
 }
-$cj = "select * from tags t1 join tag_items t2 on t1.id = t2.tagid where t2.oid in ({$kp}) and t2.type='{$c}' and t2._st=1";
-$cp = \db::query($cj);
-$ab = groupArray($cp, 'oid');
+$cr = "select * from tags t1 join tag_items t2 on t1.id = t2.tagid where t2.oid in ({$ku}) and t2.type='{$c}' and t2._st=1";
+$cx = \db::query($cr);
+$ab = groupArray($cx, 'oid');
 return $ab;
 }
-public static function countByTag($bc, $jv, $c)
+public static function countByTag($be, $kl, $c)
 {
-$cj = "select count(*) cnt, t1.id id from tags t1 join tag_items t2 on t1.id = t2.tagid where t1.name='{$jv}' and t1.type='{$c}' and t1.uid={$bc}";
-$cp = \db::query($cj);
-return [$cp[0]['cnt'], $cp[0]['id']];
+$cr = "select count(*) cnt, t1.id id from tags t1 join tag_items t2 on t1.id = t2.tagid where t1.name='{$kl}' and t1.type='{$c}' and t1.uid={$be}";
+$cx = \db::query($cr);
+return [$cx[0]['cnt'], $cx[0]['id']];
 }
-public static function saveTag($bc, $jv, $c)
+public static function saveTag($be, $kl, $c)
 {
-$ab = ['uid' => $bc, 'name' => $jv, 'type' => $c, 'count' => 1, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
+$ab = ['uid' => $be, 'name' => $kl, 'type' => $c, 'count' => 1, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
 $ab = \db::save('tags', $ab);
 return $ab;
 }
-public static function countTags($bc, $kq, $br)
+public static function countTags($be, $kv, $bu)
 {
-foreach ($kq as $jv) {
-list($kr, $bs) = self::countByTag($bc, $jv, $br);
-echo "{$jv} {$kr} {$bs} <br>";
-\db::update('tags', ['count' => $kr], ['id' => $bs]);
+foreach ($kv as $kl) {
+list($kw, $bv) = self::countByTag($be, $kl, $bu);
+echo "{$kl} {$kw} {$bv} <br>";
+\db::update('tags', ['count' => $kw], ['id' => $bv]);
 }
 }
-public static function saveRepoTags($bc, $ks)
+public static function saveRepoTags($be, $kx)
 {
-$br = 'stars';
-echo count($ks) . "<br>";
-$kq = [];
-foreach ($ks as $kt) {
-$ku = $kt['repoId'];
-$hr = isset($kt['tags']) ? $kt['tags'] : [];
-if ($hr) {
-foreach ($hr as $jv) {
-if (!in_array($jv, $kq)) {
-$kq[] = $jv;
+$bu = 'stars';
+echo count($kx) . "<br>";
+$kv = [];
+foreach ($kx as $ky) {
+$kz = $ky['repoId'];
+$hw = isset($ky['tags']) ? $ky['tags'] : [];
+if ($hw) {
+foreach ($hw as $kl) {
+if (!in_array($kl, $kv)) {
+$kv[] = $kl;
 }
-$hr = self::getTagByName($bc, $jv, $br);
-if (!$hr) {
-$jw = self::saveTag($bc, $jv, $br);
+$hw = self::getTagByName($be, $kl, $bu);
+if (!$hw) {
+$km = self::saveTag($be, $kl, $bu);
 } else {
-$jw = $hr[0];
+$km = $hw[0];
 }
-$ko = $jw['id'];
-$kv = getStarByRepoId($bc, $ku);
-if ($kv) {
-$km = $kv[0]['id'];
-$kw = self::getTagsByOid($bc, $km, $br);
-if ($jw && !in_array($jv, $kw)) {
-self::saveTagItems($bc, $ko, $km, $br);
-}
-} else {
-echo "-------- star for {$ku} not found <br>";
-}
-}
-} else {
-}
-}
-self::countTags($bc, $kq, $br);
-}
-public static function getTagItem($kx, $bc, $ky, $di, $kz)
-{
-$cj = "select * from {$ky} where {$di}={$kz} and uid={$bc}";
-return $kx->query($cj)->fetchAll();
-}
-public static function saveItemTags($kx, $bc, $br, $lm, $di = 'id')
-{
-echo count($lm) . "<br>";
-$kq = [];
-foreach ($lm as $ln) {
-$kz = $ln[$di];
-$hr = isset($ln['tags']) ? $ln['tags'] : [];
-if ($hr) {
-foreach ($hr as $jv) {
-if (!in_array($jv, $kq)) {
-$kq[] = $jv;
-}
-$hr = getTagByName($kx, $bc, $jv, $br);
-if (!$hr) {
-$jw = saveTag($kx, $bc, $jv, $br);
-} else {
-$jw = $hr[0];
-}
-$ko = $jw['id'];
-$kv = getTagItem($kx, $bc, $br, $di, $kz);
-if ($kv) {
-$km = $kv[0]['id'];
-$kw = getTagsByOid($kx, $bc, $km, $br);
-if ($jw && !in_array($jv, $kw)) {
-saveTagItems($kx, $bc, $ko, $km, $br);
+$kt = $km['id'];
+$lm = getStarByRepoId($be, $kz);
+if ($lm) {
+$kr = $lm[0]['id'];
+$ln = self::getTagsByOid($be, $kr, $bu);
+if ($km && !in_array($kl, $ln)) {
+self::saveTagItems($be, $kt, $kr, $bu);
 }
 } else {
 echo "-------- star for {$kz} not found <br>";
@@ -2319,33 +2362,86 @@ echo "-------- star for {$kz} not found <br>";
 } else {
 }
 }
-countTags($kx, $bc, $kq, $br);
+self::countTags($be, $kv, $bu);
+}
+public static function getTagItem($lo, $be, $lp, $dq, $lq)
+{
+$cr = "select * from {$lp} where {$dq}={$lq} and uid={$be}";
+return $lo->query($cr)->fetchAll();
+}
+public static function saveItemTags($lo, $be, $bu, $lr, $dq = 'id')
+{
+echo count($lr) . "<br>";
+$kv = [];
+foreach ($lr as $ls) {
+$lq = $ls[$dq];
+$hw = isset($ls['tags']) ? $ls['tags'] : [];
+if ($hw) {
+foreach ($hw as $kl) {
+if (!in_array($kl, $kv)) {
+$kv[] = $kl;
+}
+$hw = getTagByName($lo, $be, $kl, $bu);
+if (!$hw) {
+$km = saveTag($lo, $be, $kl, $bu);
+} else {
+$km = $hw[0];
+}
+$kt = $km['id'];
+$lm = getTagItem($lo, $be, $bu, $dq, $lq);
+if ($lm) {
+$kr = $lm[0]['id'];
+$ln = getTagsByOid($lo, $be, $kr, $bu);
+if ($km && !in_array($kl, $ln)) {
+saveTagItems($lo, $be, $kt, $kr, $bu);
+}
+} else {
+echo "-------- star for {$lq} not found <br>";
+}
+}
+} else {
+}
+}
+countTags($lo, $be, $kv, $bu);
 }
 }
 }
 namespace core {
 class Auth
 {
-public static function login($app, $lo = 'login', $ep = 'passwd')
+public static function login($app, $ce = 'login', $cf = 'passwd')
 {
-$bf = \cfg::get('use_ucenter_oauth');
+$bd = \cfg::get('user_tbl_name');
+$bg = \cfg::get('use_ucenter_oauth');
 $aw = cguid();
-$lp = null;
+$lt = null;
 $ay = null;
-if ($bf) {
-list($bg, $ay, $lq) = uc_user_login($app, $lo, $ep);
+$ab = \ctx::data();
+$bh = $ab['auth_type'];
+if ($bh) {
+if ($bh == 'cube') {
+info("cube auth ...");
+$aw .= '$$cube';
+$ak = cube_user_login($app, $ce, $cf);
+$ak['luser'] = local_user('cube_uid', $ak['user']['id'], $bd);
+cache_user($aw, $ak);
+$ay = $ak['user'];
+}
+} else {
+if ($bg) {
+list($bi, $ay, $lu) = uc_user_login($app, $ce, $cf);
 $ak = $ay;
-$lp = ['access_token' => $bg, 'userinfo' => $ay, 'role_list' => $lq];
-extract(cache_user($aw, $lp));
+$lt = ['access_token' => $bi, 'userinfo' => $ay, 'role_list' => $lu, 'luser' => local_user('uc_id', $ay['user_id'], $bd)];
+extract(cache_user($aw, $lt));
 $ay = select_keys(['username', 'phone', 'roles', 'email'], $ay);
 } else {
-$az = \cfg::get('user_tbl_name');
-$ak = user_login($app, $lo, $ep, $az, 1);
+$ak = user_login($app, $ce, $cf, $bd, 1);
 if ($ak) {
-$ak['username'] = $ak[$lo];
-$lp = ['user' => $ak];
-extract(cache_user($aw, $lp));
-$ay = select_keys([$lo], $ak);
+$ak['username'] = $ak[$ce];
+$lt = ['user' => $ak];
+extract(cache_user($aw, $lt));
+$ay = select_keys([$ce], $ak);
+}
 }
 }
 if ($ak) {
@@ -2365,60 +2461,60 @@ use IteratorAggregate;
 class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
 {
 protected $items = array();
-public function __construct($lr = array())
+public function __construct($lv = array())
 {
-$this->items = $this->getArrayItems($lr);
+$this->items = $this->getArrayItems($lv);
 }
-public function add($dh, $l = null)
+public function add($dp, $l = null)
 {
-if (is_array($dh)) {
-foreach ($dh as $k => $l) {
+if (is_array($dp)) {
+foreach ($dp as $k => $l) {
 $this->add($k, $l);
 }
-} elseif (is_null($this->get($dh))) {
-$this->set($dh, $l);
+} elseif (is_null($this->get($dp))) {
+$this->set($dp, $l);
 }
 }
 public function all()
 {
 return $this->items;
 }
-public function clear($dh = null)
+public function clear($dp = null)
 {
-if (is_null($dh)) {
+if (is_null($dp)) {
 $this->items = [];
 return;
 }
-$dh = (array) $dh;
-foreach ($dh as $k) {
+$dp = (array) $dp;
+foreach ($dp as $k) {
 $this->set($k, []);
 }
 }
-public function delete($dh)
+public function delete($dp)
 {
-$dh = (array) $dh;
-foreach ($dh as $k) {
+$dp = (array) $dp;
+foreach ($dp as $k) {
 if ($this->exists($this->items, $k)) {
 unset($this->items[$k]);
 continue;
 }
-$lr =& $this->items;
-$ls = explode('.', $k);
-$lt = array_pop($ls);
-foreach ($ls as $lu) {
-if (!isset($lr[$lu]) || !is_array($lr[$lu])) {
+$lv =& $this->items;
+$lw = explode('.', $k);
+$lx = array_pop($lw);
+foreach ($lw as $ly) {
+if (!isset($lv[$ly]) || !is_array($lv[$ly])) {
 continue 2;
 }
-$lr =& $lr[$lu];
+$lv =& $lv[$ly];
 }
-unset($lr[$lt]);
+unset($lv[$lx]);
 }
 }
-protected function exists($lv, $k)
+protected function exists($lz, $k)
 {
-return array_key_exists($k, $lv);
+return array_key_exists($k, $lz);
 }
-public function get($k = null, $lw = null)
+public function get($k = null, $mn = null)
 {
 if (is_null($k)) {
 return $this->items;
@@ -2427,53 +2523,53 @@ if ($this->exists($this->items, $k)) {
 return $this->items[$k];
 }
 if (strpos($k, '.') === false) {
-return $lw;
+return $mn;
 }
-$lr = $this->items;
-foreach (explode('.', $k) as $lu) {
-if (!is_array($lr) || !$this->exists($lr, $lu)) {
-return $lw;
+$lv = $this->items;
+foreach (explode('.', $k) as $ly) {
+if (!is_array($lv) || !$this->exists($lv, $ly)) {
+return $mn;
 }
-$lr =& $lr[$lu];
+$lv =& $lv[$ly];
 }
-return $lr;
+return $lv;
 }
-protected function getArrayItems($lr)
+protected function getArrayItems($lv)
 {
-if (is_array($lr)) {
-return $lr;
-} elseif ($lr instanceof self) {
-return $lr->all();
+if (is_array($lv)) {
+return $lv;
+} elseif ($lv instanceof self) {
+return $lv->all();
 }
-return (array) $lr;
+return (array) $lv;
 }
-public function has($dh)
+public function has($dp)
 {
-$dh = (array) $dh;
-if (!$this->items || $dh === []) {
+$dp = (array) $dp;
+if (!$this->items || $dp === []) {
 return false;
 }
-foreach ($dh as $k) {
-$lr = $this->items;
-if ($this->exists($lr, $k)) {
+foreach ($dp as $k) {
+$lv = $this->items;
+if ($this->exists($lv, $k)) {
 continue;
 }
-foreach (explode('.', $k) as $lu) {
-if (!is_array($lr) || !$this->exists($lr, $lu)) {
+foreach (explode('.', $k) as $ly) {
+if (!is_array($lv) || !$this->exists($lv, $ly)) {
 return false;
 }
-$lr = $lr[$lu];
+$lv = $lv[$ly];
 }
 }
 return true;
 }
-public function isEmpty($dh = null)
+public function isEmpty($dp = null)
 {
-if (is_null($dh)) {
+if (is_null($dp)) {
 return empty($this->items);
 }
-$dh = (array) $dh;
-foreach ($dh as $k) {
+$dp = (array) $dp;
+foreach ($dp as $k) {
 if (!empty($this->get($k))) {
 return false;
 }
@@ -2485,21 +2581,21 @@ public function merge($k, $l = null)
 if (is_array($k)) {
 $this->items = array_merge($this->items, $k);
 } elseif (is_string($k)) {
-$lr = (array) $this->get($k);
-$l = array_merge($lr, $this->getArrayItems($l));
+$lv = (array) $this->get($k);
+$l = array_merge($lv, $this->getArrayItems($l));
 $this->set($k, $l);
 } elseif ($k instanceof self) {
 $this->items = array_merge($this->items, $k->all());
 }
 }
-public function pull($k = null, $lw = null)
+public function pull($k = null, $mn = null)
 {
 if (is_null($k)) {
 $l = $this->all();
 $this->clear();
 return $l;
 }
-$l = $this->get($k, $lw);
+$l = $this->get($k, $mn);
 $this->delete($k);
 return $l;
 }
@@ -2509,44 +2605,44 @@ if (is_null($l)) {
 $this->items[] = $k;
 return;
 }
-$lr = $this->get($k);
-if (is_array($lr) || is_null($lr)) {
-$lr[] = $l;
-$this->set($k, $lr);
+$lv = $this->get($k);
+if (is_array($lv) || is_null($lv)) {
+$lv[] = $l;
+$this->set($k, $lv);
 }
 }
-public function set($dh, $l = null)
+public function set($dp, $l = null)
 {
-if (is_array($dh)) {
-foreach ($dh as $k => $l) {
+if (is_array($dp)) {
+foreach ($dp as $k => $l) {
 $this->set($k, $l);
 }
 return;
 }
-$lr =& $this->items;
-foreach (explode('.', $dh) as $k) {
-if (!isset($lr[$k]) || !is_array($lr[$k])) {
-$lr[$k] = [];
+$lv =& $this->items;
+foreach (explode('.', $dp) as $k) {
+if (!isset($lv[$k]) || !is_array($lv[$k])) {
+$lv[$k] = [];
 }
-$lr =& $lr[$k];
+$lv =& $lv[$k];
 }
-$lr = $l;
+$lv = $l;
 }
-public function setArray($lr)
+public function setArray($lv)
 {
-$this->items = $this->getArrayItems($lr);
+$this->items = $this->getArrayItems($lv);
 }
-public function setReference(array &$lr)
+public function setReference(array &$lv)
 {
-$this->items =& $lr;
+$this->items =& $lv;
 }
-public function toJson($k = null, $dp = 0)
+public function toJson($k = null, $dx = 0)
 {
 if (is_string($k)) {
-return json_encode($this->get($k), $dp);
+return json_encode($this->get($k), $dx);
 }
-$dp = $k === null ? 0 : $k;
-return json_encode($this->items, $dp);
+$dx = $k === null ? 0 : $k;
+return json_encode($this->items, $dx);
 }
 public function offsetExists($k)
 {
@@ -2593,51 +2689,51 @@ public $client;
 public $resp;
 private static $_services = array();
 private static $_ins = array();
-public function __construct($lx = '')
+public function __construct($mo = '')
 {
-if ($lx) {
-$this->service = $lx;
-$ev = self::$_services[$this->service];
-$ly = $ev['url'];
-debug("init client: {$ly}");
-$this->client = new Client(['base_uri' => $ly, 'timeout' => 12.0]);
+if ($mo) {
+$this->service = $mo;
+$cg = self::$_services[$this->service];
+$mp = $cg['url'];
+debug("init client: {$mp}");
+$this->client = new Client(['base_uri' => $mp, 'timeout' => 12.0]);
 }
 }
-public static function add($ev = array())
+public static function add($cg = array())
 {
-if ($ev) {
-$br = $ev['name'];
-if (!isset(self::$_services[$br])) {
-self::$_services[$br] = $ev;
+if ($cg) {
+$bu = $cg['name'];
+if (!isset(self::$_services[$bu])) {
+self::$_services[$bu] = $cg;
 }
 }
 }
 public static function init()
 {
-$lz = \cfg::get('service_list', 'service');
-if ($lz) {
-foreach ($lz as $m) {
+$mq = \cfg::get('service_list', 'service');
+if ($mq) {
+foreach ($mq as $m) {
 self::add($m);
 }
 }
 }
-public function getRest($lx, $x = '/rest')
+public function getRest($mo, $x = '/rest')
 {
-return $this->getService($lx, $x . '/');
+return $this->getService($mo, $x . '/');
 }
-public function getService($lx, $x = '')
+public function getService($mo, $x = '')
 {
-if (isset(self::$_services[$lx])) {
-if (!isset(self::$_ins[$lx])) {
-self::$_ins[$lx] = new Service($lx);
+if (isset(self::$_services[$mo])) {
+if (!isset(self::$_ins[$mo])) {
+self::$_ins[$mo] = new Service($mo);
 }
 }
-if (isset(self::$_ins[$lx])) {
-$jz = self::$_ins[$lx];
+if (isset(self::$_ins[$mo])) {
+$kp = self::$_ins[$mo];
 if ($x) {
-$jz->setPrefix($x);
+$kp->setPrefix($x);
 }
-return $jz;
+return $kp;
 } else {
 return null;
 }
@@ -2648,8 +2744,8 @@ $this->prefix = $x;
 }
 public function json()
 {
-$bt = $this->body();
-$ab = json_decode($bt, true);
+$bw = $this->body();
+$ab = json_decode($bw, true);
 return $ab;
 }
 public function body()
@@ -2658,30 +2754,30 @@ if ($this->resp) {
 return $this->resp->getBody();
 }
 }
-public function __call($gt, $mn)
+public function __call($gy, $mr)
 {
-$ev = self::$_services[$this->service];
-$ly = $ev['url'];
-$bh = $ev['appid'];
-$be = $ev['appkey'];
-$mo = getArg($mn, 0, []);
-$ab = getArg($mo, 'data', []);
+$cg = self::$_services[$this->service];
+$mp = $cg['url'];
+$bk = $cg['appid'];
+$bf = $cg['appkey'];
+$ms = getArg($mr, 0, []);
+$ab = getArg($ms, 'data', []);
 $ab = array_merge($ab, $_GET);
-unset($mp['token']);
-$ab['appid'] = $bh;
+unset($mt['token']);
+$ab['appid'] = $bk;
 $ab['date'] = date("Y-m-d H:i:s");
-$ab['sign'] = gen_sign($ab, $be);
-$mq = getArg($mo, 'path', '');
-$mr = getArg($mo, 'suffix', '');
-$mq = $this->prefix . $mq . $mr;
-$gt = strtoupper($gt);
-debug("api_url: {$bh} {$be} {$ly}");
-debug("api_name: {$mq} [{$gt}]");
+$ab['sign'] = gen_sign($ab, $bf);
+$mu = getArg($ms, 'path', '');
+$mv = getArg($ms, 'suffix', '');
+$mu = $this->prefix . $mu . $mv;
+$gy = strtoupper($gy);
+debug("api_url: {$bk} {$bf} {$mp}");
+debug("api_name: {$mu} [{$gy}]");
 debug("data: " . json_encode($ab));
 try {
-if (in_array($gt, ['GET'])) {
-$ms = $mt == 'GET' ? 'query' : 'form_params';
-$this->resp = $this->client->request($gt, $mq, [$ms => $ab]);
+if (in_array($gy, ['GET'])) {
+$mw = $mx == 'GET' ? 'query' : 'form_params';
+$this->resp = $this->client->request($gy, $mu, [$mw => $ab]);
 }
 } catch (Exception $e) {
 }
@@ -2692,30 +2788,30 @@ return $this;
 namespace core {
 trait PropGeneratorTrait
 {
-public function __get($mu)
+public function __get($my)
 {
-$gt = 'get' . ucfirst($mu);
-if (method_exists($this, $gt)) {
-$mv = new ReflectionMethod($this, $gt);
-if (!$mv->isPublic()) {
+$gy = 'get' . ucfirst($my);
+if (method_exists($this, $gy)) {
+$mz = new ReflectionMethod($this, $gy);
+if (!$mz->isPublic()) {
 throw new RuntimeException("The called method is not public ");
 }
 }
-if (property_exists($this, $mu)) {
-return $this->{$mu};
+if (property_exists($this, $my)) {
+return $this->{$my};
 }
 }
-public function __set($mu, $l)
+public function __set($my, $l)
 {
-$gt = 'set' . ucfirst($mu);
-if (method_exists($this, $gt)) {
-$mv = new ReflectionMethod($this, $gt);
-if (!$mv->isPublic()) {
+$gy = 'set' . ucfirst($my);
+if (method_exists($this, $gy)) {
+$mz = new ReflectionMethod($this, $gy);
+if (!$mz->isPublic()) {
 throw new RuntimeException("The called method is not public ");
 }
 }
-if (property_exists($this, $mu)) {
-$this->{$mu} = $l;
+if (property_exists($this, $my)) {
+$this->{$my} = $l;
 }
 }
 }
@@ -2731,65 +2827,65 @@ protected $name_key = 'name';
 protected $children_key = 'children';
 protected $ext_keys = array();
 protected $pick_node_id = 0;
-function __construct($ab, $ev = array())
+function __construct($ab, $cg = array())
 {
 $this->stack = $ab;
-if (isset($ev['pid_key'])) {
-$this->pid_key = $ev['pid_key'];
+if (isset($cg['pid_key'])) {
+$this->pid_key = $cg['pid_key'];
 }
-if (isset($ev['name_key'])) {
-$this->name_key = $ev['name_key'];
+if (isset($cg['name_key'])) {
+$this->name_key = $cg['name_key'];
 }
-if (isset($ev['children_key'])) {
-$this->children_key = $ev['children_key'];
+if (isset($cg['children_key'])) {
+$this->children_key = $cg['children_key'];
 }
-if (isset($ev['ext_keys'])) {
-$this->ext_keys = $ev['ext_keys'];
+if (isset($cg['ext_keys'])) {
+$this->ext_keys = $cg['ext_keys'];
 }
-if (isset($ev['pnid'])) {
-$this->pick_node_id = $ev['pnid'];
+if (isset($cg['pnid'])) {
+$this->pick_node_id = $cg['pnid'];
 }
-$mw = 100;
-while (count($this->stack) && $mw > 0) {
-$mw -= 1;
+$no = 100;
+while (count($this->stack) && $no > 0) {
+$no -= 1;
 debug("count stack: " . count($this->stack));
 $this->branchify(array_shift($this->stack));
 }
 }
-protected function branchify(&$mx)
+protected function branchify(&$np)
 {
 if ($this->pick_node_id) {
-if ($mx['id'] == $this->pick_node_id) {
-$this->addLeaf($this->tree, $mx);
+if ($np['id'] == $this->pick_node_id) {
+$this->addLeaf($this->tree, $np);
 return;
 }
 } else {
-if (null === $mx[$this->pid_key] || 0 == $mx[$this->pid_key]) {
-$this->addLeaf($this->tree, $mx);
+if (null === $np[$this->pid_key] || 0 == $np[$this->pid_key]) {
+$this->addLeaf($this->tree, $np);
 return;
 }
 }
-if (isset($this->leafIndex[$mx[$this->pid_key]])) {
-$this->addLeaf($this->leafIndex[$mx[$this->pid_key]][$this->children_key], $mx);
+if (isset($this->leafIndex[$np[$this->pid_key]])) {
+$this->addLeaf($this->leafIndex[$np[$this->pid_key]][$this->children_key], $np);
 } else {
-debug("back to stack: " . json_encode($mx) . json_encode($this->leafIndex));
-$this->stack[] = $mx;
+debug("back to stack: " . json_encode($np) . json_encode($this->leafIndex));
+$this->stack[] = $np;
 }
 }
-protected function addLeaf(&$my, $mx)
+protected function addLeaf(&$nq, $np)
 {
-$mz = array('id' => $mx['id'], $this->name_key => $mx['name'], 'data' => $mx, $this->children_key => array());
-foreach ($this->ext_keys as $bu => $bv) {
-if (isset($mx[$bu])) {
-$mz[$bv] = $mx[$bu];
+$nr = array('id' => $np['id'], $this->name_key => $np['name'], 'data' => $np, $this->children_key => array());
+foreach ($this->ext_keys as $bx => $by) {
+if (isset($np[$bx])) {
+$nr[$by] = $np[$bx];
 }
 }
-$my[] = $mz;
-$this->leafIndex[$mx['id']] =& $my[count($my) - 1];
+$nq[] = $nr;
+$this->leafIndex[$np['id']] =& $nq[count($nq) - 1];
 }
-protected function addChild($my, $mx)
+protected function addChild($nq, $np)
 {
-$this->leafIndex[$mx['id']] &= $my[$this->children_key][] = $mx;
+$this->leafIndex[$np['id']] &= $nq[$this->children_key][] = $np;
 }
 public function getTree()
 {
@@ -2799,62 +2895,62 @@ return $this->tree;
 }
 namespace {
 if (getenv('WHOOPS_ENABLED') == 'yes') {
-$no = new \Whoops\Run();
-$no->pushHandler(new \Whoops\Handler\PrettyPageHandler());
-$no->register();
+$ns = new \Whoops\Run();
+$ns->pushHandler(new \Whoops\Handler\PrettyPageHandler());
+$ns->register();
 }
-function getCaller($np = NULL)
+function getCaller($nt = NULL)
 {
-$nq = debug_backtrace();
-$nr = $nq[2];
-if (isset($np)) {
-return $nr[$np];
+$nu = debug_backtrace();
+$nv = $nu[2];
+if (isset($nt)) {
+return $nv[$nt];
 } else {
-return $nr;
+return $nv;
 }
 }
-function getCallerStr($ns = 4)
+function getCallerStr($nw = 4)
 {
-$nq = debug_backtrace();
-$nr = $nq[2];
-$nt = $nq[1];
-$nu = $nr['function'];
-$nv = isset($nr['class']) ? $nr['class'] : '';
-$nw = $nt['file'];
-$nx = $nt['line'];
-if ($ns == 4) {
-$bt = "{$nv} {$nu} {$nw} {$nx}";
-} elseif ($ns == 3) {
-$bt = "{$nv} {$nu} {$nx}";
+$nu = debug_backtrace();
+$nv = $nu[2];
+$nx = $nu[1];
+$ny = $nv['function'];
+$nz = isset($nv['class']) ? $nv['class'] : '';
+$op = $nx['file'];
+$oq = $nx['line'];
+if ($nw == 4) {
+$bw = "{$nz} {$ny} {$op} {$oq}";
+} elseif ($nw == 3) {
+$bw = "{$nz} {$ny} {$oq}";
 } else {
-$bt = "{$nv} {$nx}";
+$bw = "{$nz} {$oq}";
 }
-return $bt;
+return $bw;
 }
-function wlog($bp, $ny, $nz)
+function wlog($bs, $or, $os)
 {
-if (is_dir($bp)) {
-$op = date('Y-m-d', time());
-$nz .= "\n";
-file_put_contents($bp . "/{$ny}-{$op}.log", $nz, FILE_APPEND);
+if (is_dir($bs)) {
+$ot = date('Y-m-d', time());
+$os .= "\n";
+file_put_contents($bs . "/{$or}-{$ot}.log", $os, FILE_APPEND);
 }
 }
-function folder_exist($oq)
+function folder_exist($ou)
 {
-$bp = realpath($oq);
-return ($bp !== false and is_dir($bp)) ? $bp : false;
+$bs = realpath($ou);
+return ($bs !== false and is_dir($bs)) ? $bs : false;
 }
 use Rosio\EncryptedCookie\CryptoSystem\AES_SHA;
-function encrypt($ab, $or)
+function encrypt($ab, $ov)
 {
 $m = \cfg::get('encrypt');
 if (!$m) {
 return $ab;
 }
-$os = $m['symmetric_key'];
-$ot = $m['hmac_key'];
-$ou = new AES_SHA($os, $ot);
-return $ou->encrypt(serialize($ab), $or);
+$ow = $m['symmetric_key'];
+$ox = $m['hmac_key'];
+$oy = new AES_SHA($ow, $ox);
+return $oy->encrypt(serialize($ab), $ov);
 }
 function decrypt($ab)
 {
@@ -2862,131 +2958,131 @@ $m = \cfg::get('encrypt');
 if (!$m) {
 return $ab;
 }
-$os = $m['symmetric_key'];
-$ot = $m['hmac_key'];
-$ou = new AES_SHA($os, $ot);
-return unserialize($ou->decrypt($ab));
+$ow = $m['symmetric_key'];
+$ox = $m['hmac_key'];
+$oy = new AES_SHA($ow, $ox);
+return unserialize($oy->decrypt($ab));
 }
-function encrypt_cookie($ov)
+function encrypt_cookie($oz)
 {
-return encrypt($ov->getData(), $ov->getExpiration());
+return encrypt($oz->getData(), $oz->getExpiration());
 }
 define('UC_KEY', 'iHuiPaoiwoeurqoejjdfklasdjfqowiefiqwjflkjdfsdfa');
-function _authcode($du, $ow = 'DECODE', $k = '', $ox = 0)
+function _authcode($eh, $pq = 'DECODE', $k = '', $pr = 0)
 {
-$oy = 4;
+$ps = 4;
 $k = md5($k ? $k : UC_KEY);
-$oz = md5(substr($k, 0, 16));
-$pq = md5(substr($k, 16, 16));
-$pr = $oy ? $ow == 'DECODE' ? substr($du, 0, $oy) : substr(md5(microtime()), -$oy) : '';
-$ps = $oz . md5($oz . $pr);
-$pt = strlen($ps);
-$du = $ow == 'DECODE' ? base64_decode(substr($du, $oy)) : sprintf('%010d', $ox ? $ox + time() : 0) . substr(md5($du . $pq), 0, 16) . $du;
-$pu = strlen($du);
-$dv = '';
-$pv = range(0, 255);
-$pw = array();
-for ($eg = 0; $eg <= 255; $eg++) {
-$pw[$eg] = ord($ps[$eg % $pt]);
+$pt = md5(substr($k, 0, 16));
+$pu = md5(substr($k, 16, 16));
+$pv = $ps ? $pq == 'DECODE' ? substr($eh, 0, $ps) : substr(md5(microtime()), -$ps) : '';
+$pw = $pt . md5($pt . $pv);
+$px = strlen($pw);
+$eh = $pq == 'DECODE' ? base64_decode(substr($eh, $ps)) : sprintf('%010d', $pr ? $pr + time() : 0) . substr(md5($eh . $pu), 0, 16) . $eh;
+$py = strlen($eh);
+$ei = '';
+$pz = range(0, 255);
+$qr = array();
+for ($eo = 0; $eo <= 255; $eo++) {
+$qr[$eo] = ord($pw[$eo % $px]);
 }
-for ($px = $eg = 0; $eg < 256; $eg++) {
-$px = ($px + $pv[$eg] + $pw[$eg]) % 256;
-$dx = $pv[$eg];
-$pv[$eg] = $pv[$px];
-$pv[$px] = $dx;
+for ($qs = $eo = 0; $eo < 256; $eo++) {
+$qs = ($qs + $pz[$eo] + $qr[$eo]) % 256;
+$ek = $pz[$eo];
+$pz[$eo] = $pz[$qs];
+$pz[$qs] = $ek;
 }
-for ($py = $px = $eg = 0; $eg < $pu; $eg++) {
-$py = ($py + 1) % 256;
-$px = ($px + $pv[$py]) % 256;
-$dx = $pv[$py];
-$pv[$py] = $pv[$px];
-$pv[$px] = $dx;
-$dv .= chr(ord($du[$eg]) ^ $pv[($pv[$py] + $pv[$px]) % 256]);
+for ($qt = $qs = $eo = 0; $eo < $py; $eo++) {
+$qt = ($qt + 1) % 256;
+$qs = ($qs + $pz[$qt]) % 256;
+$ek = $pz[$qt];
+$pz[$qt] = $pz[$qs];
+$pz[$qs] = $ek;
+$ei .= chr(ord($eh[$eo]) ^ $pz[($pz[$qt] + $pz[$qs]) % 256]);
 }
-if ($ow == 'DECODE') {
-if ((substr($dv, 0, 10) == 0 || substr($dv, 0, 10) - time() > 0) && substr($dv, 10, 16) == substr(md5(substr($dv, 26) . $pq), 0, 16)) {
-return substr($dv, 26);
+if ($pq == 'DECODE') {
+if ((substr($ei, 0, 10) == 0 || substr($ei, 0, 10) - time() > 0) && substr($ei, 10, 16) == substr(md5(substr($ei, 26) . $pu), 0, 16)) {
+return substr($ei, 26);
 } else {
 return '';
 }
 } else {
-return $pr . str_replace('=', '', base64_encode($dv));
+return $pv . str_replace('=', '', base64_encode($ei));
 }
 }
-function object2array(&$pz)
+function object2array(&$qu)
 {
-$pz = json_decode(json_encode($pz), true);
-return $pz;
+$qu = json_decode(json_encode($qu), true);
+return $qu;
 }
-function getKeyValues($ab, $k, $ck = null)
+function getKeyValues($ab, $k, $cs = null)
 {
-if (!$ck) {
-$ck = function ($bv) {
-return $bv;
+if (!$cs) {
+$cs = function ($by) {
+return $by;
 };
 }
-$qr = array();
+$bc = array();
 if ($ab && is_array($ab)) {
-foreach ($ab as $dk) {
-if (isset($dk[$k]) && $dk[$k]) {
-$u = $dk[$k];
-if ($ck) {
-$u = $ck($u);
+foreach ($ab as $ds) {
+if (isset($ds[$k]) && $ds[$k]) {
+$u = $ds[$k];
+if ($cs) {
+$u = $cs($u);
 }
-$qr[] = $u;
+$bc[] = $u;
 }
 }
 }
-return array_unique($qr);
+return array_unique($bc);
 }
 if (!function_exists('indexArray')) {
-function indexArray($ab, $k, $eu = null)
+function indexArray($ab, $k, $fg = null)
 {
-$qr = array();
+$bc = array();
 if ($ab && is_array($ab)) {
-foreach ($ab as $dk) {
-if (!isset($dk[$k]) || !$dk[$k] || !is_scalar($dk[$k])) {
+foreach ($ab as $ds) {
+if (!isset($ds[$k]) || !$ds[$k] || !is_scalar($ds[$k])) {
 continue;
 }
-if (!$eu) {
-$qr[$dk[$k]] = $dk;
+if (!$fg) {
+$bc[$ds[$k]] = $ds;
 } else {
-if (is_string($eu)) {
-$qr[$dk[$k]] = $dk[$eu];
+if (is_string($fg)) {
+$bc[$ds[$k]] = $ds[$fg];
 } else {
-if (is_array($eu)) {
-$qs = [];
-foreach ($eu as $bu => $bv) {
-$qs[$bv] = $dk[$bv];
+if (is_array($fg)) {
+$qv = [];
+foreach ($fg as $bx => $by) {
+$qv[$by] = $ds[$by];
 }
-$qr[$dk[$k]] = $dk[$eu];
-}
-}
+$bc[$ds[$k]] = $ds[$fg];
 }
 }
 }
-return $qr;
+}
+}
+return $bc;
 }
 }
 if (!function_exists('groupArray')) {
-function groupArray($lv, $k)
+function groupArray($lz, $k)
 {
-if (!is_array($lv) || !$lv) {
+if (!is_array($lz) || !$lz) {
 return array();
 }
 $ab = array();
-foreach ($lv as $dk) {
-if (isset($dk[$k]) && $dk[$k]) {
-$ab[$dk[$k]][] = $dk;
+foreach ($lz as $ds) {
+if (isset($ds[$k]) && $ds[$k]) {
+$ab[$ds[$k]][] = $ds;
 }
 }
 return $ab;
 }
 }
-function select_keys($dh, $ab)
+function select_keys($dp, $ab)
 {
 $v = [];
-foreach ($dh as $k) {
+foreach ($dp as $k) {
 if (isset($ab[$k])) {
 $v[$k] = $ab[$k];
 } else {
@@ -2995,148 +3091,148 @@ $v[$k] = '';
 }
 return $v;
 }
-function un_select_keys($dh, $ab)
+function un_select_keys($dp, $ab)
 {
 $v = [];
-foreach ($ab as $bu => $dk) {
-if (!in_array($bu, $dh)) {
-$v[$bu] = $dk;
+foreach ($ab as $bx => $ds) {
+if (!in_array($bx, $dp)) {
+$v[$bx] = $ds;
 }
 }
 return $v;
 }
-function copyKey($ab, $qt, $qu)
+function copyKey($ab, $qw, $qx)
 {
-foreach ($ab as &$dk) {
-$dk[$qu] = $dk[$qt];
+foreach ($ab as &$ds) {
+$ds[$qx] = $ds[$qw];
 }
 return $ab;
 }
 function addKey($ab, $k, $u)
 {
-foreach ($ab as &$dk) {
-$dk[$k] = $u;
+foreach ($ab as &$ds) {
+$ds[$k] = $u;
 }
 return $ab;
 }
-function dissoc($lv, $dh)
+function dissoc($lz, $dp)
 {
-if (is_array($dh)) {
-foreach ($dh as $k) {
-unset($lv[$k]);
+if (is_array($dp)) {
+foreach ($dp as $k) {
+unset($lz[$k]);
 }
 } else {
-unset($lv[$dh]);
+unset($lz[$dp]);
 }
-return $lv;
+return $lz;
 }
 function sortIdx($ab)
 {
-$qv = [];
-foreach ($ab as $bu => $bv) {
-$qv[$bv] = ['_sort' => $bu + 1];
+$qy = [];
+foreach ($ab as $bx => $by) {
+$qy[$by] = ['_sort' => $bx + 1];
 }
-return $qv;
+return $qy;
 }
-function insertAt($lr, $qw, $l)
+function insertAt($lv, $qz, $l)
 {
-array_splice($lr, $qw, 0, [$l]);
-return $lr;
+array_splice($lv, $qz, 0, [$l]);
+return $lv;
 }
-function getArg($mo, $qx, $lw = '')
+function getArg($ms, $rs, $mn = '')
 {
-if (isset($mo[$qx])) {
-return $mo[$qx];
+if (isset($ms[$rs])) {
+return $ms[$rs];
 } else {
-return $lw;
+return $mn;
 }
 }
-function permu($au, $cy = ',')
+function permu($au, $dk = ',')
 {
 $ai = [];
 if (is_string($au)) {
-$qy = str_split($au);
+$rt = str_split($au);
 } else {
-$qy = $au;
+$rt = $au;
 }
-sort($qy);
-$qz = count($qy) - 1;
-$rs = $qz;
+sort($rt);
+$ru = count($rt) - 1;
+$rv = $ru;
 $ap = 1;
-$dk = implode($cy, $qy);
-$ai[] = $dk;
+$ds = implode($dk, $rt);
+$ai[] = $ds;
 while (true) {
-$rt = $rs--;
-if ($qy[$rs] < $qy[$rt]) {
-$ru = $qz;
-while ($qy[$rs] > $qy[$ru]) {
-$ru--;
+$rw = $rv--;
+if ($rt[$rv] < $rt[$rw]) {
+$rx = $ru;
+while ($rt[$rv] > $rt[$rx]) {
+$rx--;
 }
-list($qy[$rs], $qy[$ru]) = array($qy[$ru], $qy[$rs]);
-for ($eg = $qz; $eg > $rt; $eg--, $rt++) {
-list($qy[$eg], $qy[$rt]) = array($qy[$rt], $qy[$eg]);
+list($rt[$rv], $rt[$rx]) = array($rt[$rx], $rt[$rv]);
+for ($eo = $ru; $eo > $rw; $eo--, $rw++) {
+list($rt[$eo], $rt[$rw]) = array($rt[$rw], $rt[$eo]);
 }
-$dk = implode($cy, $qy);
-$ai[] = $dk;
-$rs = $qz;
+$ds = implode($dk, $rt);
+$ai[] = $ds;
+$rv = $ru;
 $ap++;
 }
-if ($rs == 0) {
+if ($rv == 0) {
 break;
 }
 }
 return $ai;
 }
-function combin($qr, $rv, $rw = ',')
+function combin($bc, $ry, $rz = ',')
 {
-$dv = array();
-if ($rv == 1) {
-return $qr;
+$ei = array();
+if ($ry == 1) {
+return $bc;
 }
-if ($rv == count($qr)) {
-$dv[] = implode($rw, $qr);
-return $dv;
+if ($ry == count($bc)) {
+$ei[] = implode($rz, $bc);
+return $ei;
 }
-$rx = $qr[0];
-unset($qr[0]);
-$qr = array_values($qr);
-$ry = combin($qr, $rv - 1, $rw);
-foreach ($ry as $rz) {
-$rz = $rx . $rw . $rz;
-$dv[] = $rz;
+$st = $bc[0];
+unset($bc[0]);
+$bc = array_values($bc);
+$su = combin($bc, $ry - 1, $rz);
+foreach ($su as $sv) {
+$sv = $st . $rz . $sv;
+$ei[] = $sv;
 }
-unset($ry);
-$st = combin($qr, $rv, $rw);
-foreach ($st as $rz) {
-$dv[] = $rz;
+unset($su);
+$sw = combin($bc, $ry, $rz);
+foreach ($sw as $sv) {
+$ei[] = $sv;
 }
-unset($st);
-return $dv;
+unset($sw);
+return $ei;
 }
-function getExcelCol($cl)
+function getExcelCol($ct)
 {
-$qr = array(0 => 'Z', 1 => 'A', 2 => 'B', 3 => 'C', 4 => 'D', 5 => 'E', 6 => 'F', 7 => 'G', 8 => 'H', 9 => 'I', 10 => 'J', 11 => 'K', 12 => 'L', 13 => 'M', 14 => 'N', 15 => 'O', 16 => 'P', 17 => 'Q', 18 => 'R', 19 => 'S', 20 => 'T', 21 => 'U', 22 => 'V', 23 => 'W', 24 => 'X', 25 => 'Y', 26 => 'Z');
-if ($cl == 0) {
+$bc = array(0 => 'Z', 1 => 'A', 2 => 'B', 3 => 'C', 4 => 'D', 5 => 'E', 6 => 'F', 7 => 'G', 8 => 'H', 9 => 'I', 10 => 'J', 11 => 'K', 12 => 'L', 13 => 'M', 14 => 'N', 15 => 'O', 16 => 'P', 17 => 'Q', 18 => 'R', 19 => 'S', 20 => 'T', 21 => 'U', 22 => 'V', 23 => 'W', 24 => 'X', 25 => 'Y', 26 => 'Z');
+if ($ct == 0) {
 return '';
 }
-return getExcelCol((int) (($cl - 1) / 26)) . $qr[$cl % 26];
+return getExcelCol((int) (($ct - 1) / 26)) . $bc[$ct % 26];
 }
-function getExcelPos($df, $cl)
+function getExcelPos($dn, $ct)
 {
-return getExcelCol($cl) . $df;
+return getExcelCol($ct) . $dn;
 }
 function sendJSON($ab)
 {
-$su = cfg::get('aca');
-if (isset($su['origin'])) {
-header("Access-Control-Allow-Origin: {$su['origin']}");
+$sx = cfg::get('aca');
+if (isset($sx['origin'])) {
+header("Access-Control-Allow-Origin: {$sx['origin']}");
 }
-$sv = "Content-Type, Authorization, Accept,X-Requested-With";
-if (isset($su['headers'])) {
-$sv = $su['headers'];
+$sy = "Content-Type, Authorization, Accept,X-Requested-With";
+if (isset($sx['headers'])) {
+$sy = $sx['headers'];
 }
 header("Access-Control-Allow-Methods: POST, GET, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: {$sv}");
+header("Access-Control-Allow-Headers: {$sy}");
 header("Content-type: application/json");
 header("Access-Control-Allow-Credentials:true");
 log_time("sendJSON Total", 'begin');
@@ -3147,87 +3243,87 @@ echo $ab;
 }
 exit;
 }
-function succ($qr = array(), $sw = 'succ', $sx = 1)
+function succ($bc = array(), $sz = 'succ', $tu = 1)
 {
-$ab = $qr;
-$sy = 0;
-$sz = 1;
+$ab = $bc;
+$tv = 0;
+$tw = 1;
 $ap = 0;
-$v = array($sw => $sx, 'errormsg' => '', 'errorfield' => '');
-if (isset($qr['data'])) {
-$ab = $qr['data'];
+$v = array($sz => $tu, 'errormsg' => '', 'errorfield' => '');
+if (isset($bc['data'])) {
+$ab = $bc['data'];
 }
 $v['data'] = $ab;
-if (isset($qr['total_page'])) {
-$v['total_page'] = $qr['total_page'];
+if (isset($bc['total_page'])) {
+$v['total_page'] = $bc['total_page'];
 }
-if (isset($qr['cur_page'])) {
-$v['cur_page'] = $qr['cur_page'];
+if (isset($bc['cur_page'])) {
+$v['cur_page'] = $bc['cur_page'];
 }
-if (isset($qr['count'])) {
-$v['count'] = $qr['count'];
+if (isset($bc['count'])) {
+$v['count'] = $bc['count'];
 }
-if (isset($qr['res-name'])) {
-$v['res-name'] = $qr['res-name'];
+if (isset($bc['res-name'])) {
+$v['res-name'] = $bc['res-name'];
 }
-if (isset($qr['meta'])) {
-$v['meta'] = $qr['meta'];
+if (isset($bc['meta'])) {
+$v['meta'] = $bc['meta'];
 }
 sendJSON($v);
 }
-function fail($qr = array(), $sw = 'succ', $tu = 0)
+function fail($bc = array(), $sz = 'succ', $tx = 0)
 {
-$k = $nz = '';
-if (count($qr) > 0) {
-$dh = array_keys($qr);
-$k = $dh[0];
-$nz = $qr[$k][0];
+$k = $os = '';
+if (count($bc) > 0) {
+$dp = array_keys($bc);
+$k = $dp[0];
+$os = $bc[$k][0];
 }
-$v = array($sw => $tu, 'errormsg' => $nz, 'errorfield' => $k);
+$v = array($sz => $tx, 'errormsg' => $os, 'errorfield' => $k);
 sendJSON($v);
 }
-function code($qr = array(), $ey = 0)
+function code($bc = array(), $fj = 0)
 {
-if (is_string($ey)) {
+if (is_string($fj)) {
 }
-if ($ey == 0) {
-succ($qr, 'code', 0);
+if ($fj == 0) {
+succ($bc, 'code', 0);
 } else {
-fail($qr, 'code', $ey);
+fail($bc, 'code', $fj);
 }
 }
-function ret($qr = array(), $ey = 0, $ju = '')
+function ret($bc = array(), $fj = 0, $jz = '')
 {
-$py = $qr;
-$tv = $ey;
-if (is_numeric($qr) || is_string($qr)) {
-$tv = $qr;
-$py = array();
-if (is_array($ey)) {
-$py = $ey;
+$qt = $bc;
+$ty = $fj;
+if (is_numeric($bc) || is_string($bc)) {
+$ty = $bc;
+$qt = array();
+if (is_array($fj)) {
+$qt = $fj;
 } else {
-$ey = $ey === 0 ? '' : $ey;
-$py = array($ju => array($ey));
+$fj = $fj === 0 ? '' : $fj;
+$qt = array($jz => array($fj));
 }
 }
-code($py, $tv);
+code($qt, $ty);
 }
-function err($tw)
+function err($tz)
 {
-code($tw, 1);
+code($tz, 1);
 }
-function downloadExcel($tx, $dy)
+function downloadExcel($uv, $el)
 {
 header("Content-Type: application/force-download");
 header("Content-Type: application/octet-stream");
 header("Content-Type: application/download");
-header('Content-Disposition:inline;filename="' . $dy . '.xls"');
+header('Content-Disposition:inline;filename="' . $el . '.xls"');
 header("Content-Transfer-Encoding: binary");
 header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
 header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
 header("Pragma: no-cache");
-$tx->save('php://output');
+$uv->save('php://output');
 }
 function dd($ab)
 {
@@ -3238,66 +3334,66 @@ function cacert_file()
 {
 return ROOT_PATH . "/fn/cacert.pem";
 }
-function curl($es, $ty = 10, $tz = 30, $uv = '', $gt = 'post')
+function curl($ey, $uw = 10, $ux = 30, $uy = '', $gy = 'post')
 {
-$uw = curl_init($es);
-curl_setopt($uw, CURLOPT_RETURNTRANSFER, 1);
-curl_setopt($uw, CURLOPT_CONNECTTIMEOUT, $ty);
-curl_setopt($uw, CURLOPT_HEADER, 0);
-curl_setopt($uw, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.1.8) Gecko/20100202 Firefox/3.5.8 GTB7.0');
-curl_setopt($uw, CURLOPT_TIMEOUT, $tz);
+$uz = curl_init($ey);
+curl_setopt($uz, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($uz, CURLOPT_CONNECTTIMEOUT, $uw);
+curl_setopt($uz, CURLOPT_HEADER, 0);
+curl_setopt($uz, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.1.8) Gecko/20100202 Firefox/3.5.8 GTB7.0');
+curl_setopt($uz, CURLOPT_TIMEOUT, $ux);
 if (file_exists(cacert_file())) {
-curl_setopt($uw, CURLOPT_CAINFO, cacert_file());
+curl_setopt($uz, CURLOPT_CAINFO, cacert_file());
 }
-if ($uv) {
-if (is_array($uv)) {
-$uv = http_build_query($uv);
+if ($uy) {
+if (is_array($uy)) {
+$uy = http_build_query($uy);
 }
-if ($gt == 'post') {
-curl_setopt($uw, CURLOPT_POST, 1);
+if ($gy == 'post') {
+curl_setopt($uz, CURLOPT_POST, 1);
 } else {
-if ($gt == 'put') {
-curl_setopt($uw, CURLOPT_CUSTOMREQUEST, "put");
+if ($gy == 'put') {
+curl_setopt($uz, CURLOPT_CUSTOMREQUEST, "put");
 }
 }
-curl_setopt($uw, CURLOPT_POSTFIELDS, $uv);
+curl_setopt($uz, CURLOPT_POSTFIELDS, $uy);
 }
-$dv = curl_exec($uw);
-if (curl_errno($uw)) {
+$ei = curl_exec($uz);
+if (curl_errno($uz)) {
 return '';
 }
-curl_close($uw);
-return $dv;
+curl_close($uz);
+return $ei;
 }
-function curl_header($es, $ty = 10, $tz = 30)
+function curl_header($ey, $uw = 10, $ux = 30)
 {
-$uw = curl_init($es);
-curl_setopt($uw, CURLOPT_RETURNTRANSFER, 1);
-curl_setopt($uw, CURLOPT_CONNECTTIMEOUT, $ty);
-curl_setopt($uw, CURLOPT_HEADER, 1);
-curl_setopt($uw, CURLOPT_NOBODY, 1);
-curl_setopt($uw, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.1.8) Gecko/20100202 Firefox/3.5.8 GTB7.0');
-curl_setopt($uw, CURLOPT_TIMEOUT, $tz);
+$uz = curl_init($ey);
+curl_setopt($uz, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($uz, CURLOPT_CONNECTTIMEOUT, $uw);
+curl_setopt($uz, CURLOPT_HEADER, 1);
+curl_setopt($uz, CURLOPT_NOBODY, 1);
+curl_setopt($uz, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.1.8) Gecko/20100202 Firefox/3.5.8 GTB7.0');
+curl_setopt($uz, CURLOPT_TIMEOUT, $ux);
 if (file_exists(cacert_file())) {
-curl_setopt($uw, CURLOPT_CAINFO, cacert_file());
+curl_setopt($uz, CURLOPT_CAINFO, cacert_file());
 }
-$dv = curl_exec($uw);
-if (curl_errno($uw)) {
+$ei = curl_exec($uz);
+if (curl_errno($uz)) {
 return '';
 }
-return $dv;
+return $ei;
 }
-function startWith($bt, $rz)
+function startWith($bw, $sv)
 {
-return strpos($bt, $rz) === 0;
+return strpos($bw, $sv) === 0;
 }
-function endWith($ux, $uy)
+function endWith($vw, $vx)
 {
-$uz = strlen($uy);
-if ($uz == 0) {
+$vy = strlen($vx);
+if ($vy == 0) {
 return true;
 }
-return substr($ux, -$uz) === $uy;
+return substr($vw, -$vy) === $vx;
 }
 function is_string_column($c)
 {
@@ -3307,168 +3403,168 @@ return 2;
 return 1;
 }
 }
-function getWhereStr($k, $ab, $vw = false, $ju = '')
+function getWhereStr($k, $ab, $vz = false, $jz = '')
 {
-$lv = getKeyValues($ab, $k);
-if (!$lv) {
+$lz = getKeyValues($ab, $k);
+if (!$lz) {
 return '';
 }
-if ($vw) {
-foreach ($lv as $bu => $bv) {
-$lv[$bu] = "'{$bv}'";
+if ($vz) {
+foreach ($lz as $bx => $by) {
+$lz[$bx] = "'{$by}'";
 }
 }
-$bt = implode(',', $lv);
-if ($ju) {
-$k = $ju;
+$bw = implode(',', $lz);
+if ($jz) {
+$k = $jz;
 }
-return " {$k} in ({$bt})";
+return " {$k} in ({$bw})";
 }
-function get_top_domain($es)
+function get_top_domain($ey)
 {
-$fw = "/[\\w-]+\\.(com|net|org|gov|cc|biz|info|cn)(\\.(cn|hk))*/";
-preg_match($fw, $es, $vx);
-if (count($vx) > 0) {
-return $vx[0];
+$gi = "/[\\w-]+\\.(com|net|org|gov|cc|biz|info|cn)(\\.(cn|hk))*/";
+preg_match($gi, $ey, $wx);
+if (count($wx) > 0) {
+return $wx[0];
 } else {
-$vy = parse_url($es);
-$vz = $vy["host"];
-if (!strcmp(long2ip(sprintf("%u", ip2long($vz))), $vz)) {
-return $vz;
+$wy = parse_url($ey);
+$wz = $wy["host"];
+if (!strcmp(long2ip(sprintf("%u", ip2long($wz))), $wz)) {
+return $wz;
 } else {
-$qr = explode(".", $vz);
-$ap = count($qr);
-$wx = array("com", "net", "org", "3322");
-if (in_array($qr[$ap - 2], $wx)) {
-$gp = $qr[$ap - 3] . "." . $qr[$ap - 2] . "." . $qr[$ap - 1];
+$bc = explode(".", $wz);
+$ap = count($bc);
+$xy = array("com", "net", "org", "3322");
+if (in_array($bc[$ap - 2], $xy)) {
+$gu = $bc[$ap - 3] . "." . $bc[$ap - 2] . "." . $bc[$ap - 1];
 } else {
-$gp = $qr[$ap - 2] . "." . $qr[$ap - 1];
+$gu = $bc[$ap - 2] . "." . $bc[$ap - 1];
 }
-return $gp;
+return $gu;
 }
 }
 }
-function genID($nt)
+function genID($nx)
 {
-list($wy, $wz) = explode(" ", microtime());
-$xy = rand(0, 100);
-return $nt . $wz . substr($wy, 2, 6);
+list($xz, $yz) = explode(" ", microtime());
+$abc = rand(0, 100);
+return $nx . $yz . substr($xz, 2, 6);
 }
-function cguid($xz = false)
+function cguid($abd = false)
 {
 mt_srand((double) microtime() * 10000);
-$yz = md5(uniqid(rand(), true));
-return $xz ? strtoupper($yz) : $yz;
+$abe = md5(uniqid(rand(), true));
+return $abd ? strtoupper($abe) : $abe;
 }
 function guid()
 {
 if (function_exists('com_create_guid')) {
 return com_create_guid();
 } else {
-$abc = cguid();
-$abd = chr(45);
-$abe = chr(123) . substr($abc, 0, 8) . $abd . substr($abc, 8, 4) . $abd . substr($abc, 12, 4) . $abd . substr($abc, 16, 4) . $abd . substr($abc, 20, 12) . chr(125);
-return $abe;
+$abf = cguid();
+$abg = chr(45);
+$abh = chr(123) . substr($abf, 0, 8) . $abg . substr($abf, 8, 4) . $abg . substr($abf, 12, 4) . $abg . substr($abf, 16, 4) . $abg . substr($abf, 20, 12) . chr(125);
+return $abh;
 }
 }
-function randstr($kr = 6)
+function randstr($kw = 6)
 {
-return substr(md5(rand()), 0, $kr);
+return substr(md5(rand()), 0, $kw);
 }
-function hashsalt($ep, $abf = '')
+function hashsalt($cf, $abi = '')
 {
-$abf = $abf ? $abf : randstr(10);
-$abg = md5(md5($ep) . $abf);
-return [$abg, $abf];
+$abi = $abi ? $abi : randstr(10);
+$abj = md5(md5($cf) . $abi);
+return [$abj, $abi];
 }
-function gen_letters($kr = 26)
+function gen_letters($kw = 26)
 {
-$rz = '';
-for ($eg = 65; $eg < 65 + $kr; $eg++) {
-$rz .= strtolower(chr($eg));
+$sv = '';
+for ($eo = 65; $eo < 65 + $kw; $eo++) {
+$sv .= strtolower(chr($eo));
 }
-return $rz;
+return $sv;
 }
-function gen_sign($bd, $aw = null)
+function gen_sign($az, $aw = null)
 {
 if ($aw == null) {
 return false;
 }
-return strtoupper(md5(strtoupper(md5(assemble($bd))) . $aw));
+return strtoupper(md5(strtoupper(md5(assemble($az))) . $aw));
 }
-function assemble($bd)
+function assemble($az)
 {
-if (!is_array($bd)) {
+if (!is_array($az)) {
 return null;
 }
-ksort($bd, SORT_STRING);
-$abh = '';
-foreach ($bd as $k => $u) {
-$abh .= $k . (is_array($u) ? assemble($u) : $u);
+ksort($az, SORT_STRING);
+$abk = '';
+foreach ($az as $k => $u) {
+$abk .= $k . (is_array($u) ? assemble($u) : $u);
 }
-return $abh;
+return $abk;
 }
-function check_sign($bd, $aw = null)
+function check_sign($az, $aw = null)
 {
-$abh = getArg($bd, 'sign');
-$abi = getArg($bd, 'date');
-$abj = strtotime($abi);
-$abk = time();
-$abl = $abk - $abj;
-debug("check_sign : {$abk} - {$abj} = {$abl}");
-if (!$abi || $abk - $abj > 60) {
-debug("check_sign fail : {$abi} delta > 60");
+$abk = getArg($az, 'sign');
+$abl = getArg($az, 'date');
+$abm = strtotime($abl);
+$abn = time();
+$abo = $abn - $abm;
+debug("check_sign : {$abn} - {$abm} = {$abo}");
+if (!$abl || $abn - $abm > 60) {
+debug("check_sign fail : {$abl} delta > 60");
 return false;
 }
-unset($bd['sign']);
-$abm = gen_sign($bd, $aw);
-debug("{$abh} -- {$abm}");
-return $abh == $abm;
+unset($az['sign']);
+$abp = gen_sign($az, $aw);
+debug("{$abk} -- {$abp}");
+return $abk == $abp;
 }
 function getIP()
 {
 if (!empty($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-$abn = $_SERVER["HTTP_X_FORWARDED_FOR"];
+$abq = $_SERVER["HTTP_X_FORWARDED_FOR"];
 } else {
 if (!empty($_SERVER["HTTP_CLIENT_IP"])) {
-$abn = $_SERVER["HTTP_CLIENT_IP"];
+$abq = $_SERVER["HTTP_CLIENT_IP"];
 } else {
 if (!empty($_SERVER["REMOTE_ADDR"])) {
-$abn = $_SERVER["REMOTE_ADDR"];
+$abq = $_SERVER["REMOTE_ADDR"];
 } else {
 if (getenv("HTTP_X_FORWARDED_FOR")) {
-$abn = getenv("HTTP_X_FORWARDED_FOR");
+$abq = getenv("HTTP_X_FORWARDED_FOR");
 } else {
 if (getenv("HTTP_CLIENT_IP")) {
-$abn = getenv("HTTP_CLIENT_IP");
+$abq = getenv("HTTP_CLIENT_IP");
 } else {
 if (getenv("REMOTE_ADDR")) {
-$abn = getenv("REMOTE_ADDR");
+$abq = getenv("REMOTE_ADDR");
 } else {
-$abn = "Unknown";
+$abq = "Unknown";
 }
 }
 }
 }
 }
 }
-return $abn;
+return $abq;
 }
 function getRIP()
 {
-$abn = $_SERVER["REMOTE_ADDR"];
-return $abn;
+$abq = $_SERVER["REMOTE_ADDR"];
+return $abq;
 }
-function env($k = 'DEV_MODE', $lw = '')
+function env($k = 'DEV_MODE', $mn = '')
 {
 $l = getenv($k);
-return $l ? $l : $lw;
+return $l ? $l : $mn;
 }
 function vpath()
 {
-$bp = getenv("VENDER_PATH");
-if ($bp) {
-return $bp;
+$bs = getenv("VENDER_PATH");
+if ($bs) {
+return $bs;
 } else {
 return ROOT_PATH;
 }
@@ -3497,8 +3593,8 @@ if (isset($_SERVER['HTTP_VIA'])) {
 return stristr($_SERVER['HTTP_VIA'], "wap") ? true : false;
 }
 if (isset($_SERVER['HTTP_USER_AGENT'])) {
-$abo = array('nokia', 'sony', 'ericsson', 'mot', 'samsung', 'htc', 'sgh', 'lg', 'sharp', 'sie-', 'philips', 'panasonic', 'alcatel', 'lenovo', 'iphone', 'ipod', 'blackberry', 'meizu', 'android', 'netfront', 'symbian', 'ucweb', 'windowsce', 'palm', 'operamini', 'operamobi', 'openwave', 'nexusone', 'cldc', 'midp', 'wap', 'mobile');
-if (preg_match("/(" . implode('|', $abo) . ")/i", strtolower($_SERVER['HTTP_USER_AGENT']))) {
+$abr = array('nokia', 'sony', 'ericsson', 'mot', 'samsung', 'htc', 'sgh', 'lg', 'sharp', 'sie-', 'philips', 'panasonic', 'alcatel', 'lenovo', 'iphone', 'ipod', 'blackberry', 'meizu', 'android', 'netfront', 'symbian', 'ucweb', 'windowsce', 'palm', 'operamini', 'operamobi', 'openwave', 'nexusone', 'cldc', 'midp', 'wap', 'mobile');
+if (preg_match("/(" . implode('|', $abr) . ")/i", strtolower($_SERVER['HTTP_USER_AGENT']))) {
 return true;
 }
 }
@@ -3510,48 +3606,48 @@ return true;
 return false;
 }
 use Symfony\Component\Cache\Simple\FilesystemCache;
-function cache($k, $ck = null, $wz = 10, $abp = 0)
+function cache($k, $cs = null, $yz = 10, $abs = 0)
 {
-$abq = new FilesystemCache();
-if ($ck) {
-if (is_callable($ck)) {
-if ($abp || !$abq->has($k)) {
-$ab = $ck();
+$abt = new FilesystemCache();
+if ($cs) {
+if (is_callable($cs)) {
+if ($abs || !$abt->has($k)) {
+$ab = $cs();
 debug("--------- fn: no cache for [{$k}] ----------");
-$abq->set($k, $ab, $wz);
+$abt->set($k, $ab, $yz);
 } else {
-$ab = $abq->get($k);
+$ab = $abt->get($k);
 debug("======= fn: data from cache [{$k}] ========");
 }
 } else {
-debug("--------- set cache for [{$k}] ---------- : " . json_encode($ck));
-$abq->set($k, $ck, $wz);
-$ab = $ck;
+debug("--------- set cache for [{$k}] ---------- : " . json_encode($cs));
+$abt->set($k, $cs, $yz);
+$ab = $cs;
 }
 } else {
 debug("--------- get cache for [{$k}] ---------- ");
-$ab = $abq->get($k);
+$ab = $abt->get($k);
 }
 return $ab;
 }
 function cache_del($k)
 {
-$abq = new FilesystemCache();
-$abq->delete($k);
+$abt = new FilesystemCache();
+$abt->delete($k);
 debug("!!!!!!--------- delete cache for [{$k}] ----------!!!!!!");
 }
 function cache_clear()
 {
-$abq = new FilesystemCache();
-$abq->clear();
+$abt = new FilesystemCache();
+$abt->clear();
 debug("!!!!!!--------- clear all cache ----------!!!!!!");
 }
-function baseModel($abr)
+function baseModel($abu)
 {
 return '<' . <<<EOF
 ?php
 namespace Entities {
-class {$abr}
+class {$abu}
 {
     protected \$id;
     protected \$intm;
@@ -3559,188 +3655,188 @@ class {$abr}
 
 EOF;
 }
-function baseArray($abr, $dn)
+function baseArray($abu, $dv)
 {
-return array("Entities\\{$abr}" => array('type' => 'entity', 'table' => $dn, 'id' => array('id' => array('type' => 'integer', 'id' => true, 'generator' => array('strategy' => 'IDENTITY'))), 'fields' => array('intm' => array('type' => 'datetime', 'column' => '_intm'), 'st' => array('type' => 'integer', 'column' => '_st', 'options' => array('default' => 1)))));
+return array("Entities\\{$abu}" => array('type' => 'entity', 'table' => $dv, 'id' => array('id' => array('type' => 'integer', 'id' => true, 'generator' => array('strategy' => 'IDENTITY'))), 'fields' => array('intm' => array('type' => 'datetime', 'column' => '_intm'), 'st' => array('type' => 'integer', 'column' => '_st', 'options' => array('default' => 1)))));
 }
-function genObj($abr)
+function genObj($abu)
 {
-$abs = array_merge(\db::col_array('sys_objects'), ['sys_object_item.name(itemname)', 'sys_object_item.colname', 'sys_object_item.type', 'sys_object_item.length', 'sys_object_item.default', 'sys_object_item.comment']);
-$cy = ['[>]sys_object_item' => ['id' => 'oid']];
-$dl = ['AND' => ['sys_objects.name' => $abr], 'ORDER' => ['sys_objects.id' => 'DESC']];
-$cp = \db::all('sys_objects', $dl, $abs, $cy);
-if ($cp) {
-$dn = $cp[0]['table'];
-$ab = baseArray($abr, $dn);
-$abt = baseModel($abr);
-foreach ($cp as $df) {
-if (!$df['itemname']) {
+$abv = array_merge(\db::col_array('sys_objects'), ['sys_object_item.name(itemname)', 'sys_object_item.colname', 'sys_object_item.type', 'sys_object_item.length', 'sys_object_item.default', 'sys_object_item.comment']);
+$dk = ['[>]sys_object_item' => ['id' => 'oid']];
+$dt = ['AND' => ['sys_objects.name' => $abu], 'ORDER' => ['sys_objects.id' => 'DESC']];
+$cx = \db::all('sys_objects', $dt, $abv, $dk);
+if ($cx) {
+$dv = $cx[0]['table'];
+$ab = baseArray($abu, $dv);
+$abw = baseModel($abu);
+foreach ($cx as $dn) {
+if (!$dn['itemname']) {
 continue;
 }
-$abu = $df['colname'] ? $df['colname'] : $df['itemname'];
-$ju = ['type' => "{$df['type']}", 'column' => "{$abu}", 'options' => array('default' => "{$df['default']}", 'comment' => "{$df['comment']}")];
-$ab['Entities\\' . $abr]['fields'][$df['itemname']] = $ju;
-$abt .= "    protected \${$df['itemname']}; \n";
+$abx = $dn['colname'] ? $dn['colname'] : $dn['itemname'];
+$jz = ['type' => "{$dn['type']}", 'column' => "{$abx}", 'options' => array('default' => "{$dn['default']}", 'comment' => "{$dn['comment']}")];
+$ab['Entities\\' . $abu]['fields'][$dn['itemname']] = $jz;
+$abw .= "    protected \${$dn['itemname']}; \n";
 }
-$abt .= '}}';
+$abw .= '}}';
 }
-return [$ab, $abt];
+return [$ab, $abw];
 }
-function writeObjFile($abr)
+function writeObjFile($abu)
 {
-list($ab, $abt) = genObj($abr);
-$abv = \Symfony\Component\Yaml\Yaml::dump($ab);
-$abw = ROOT_PATH . env('ORM_PATH', '/tools/bin/db');
-$abx = $abw . '/src/objs';
-if (!is_dir($abx)) {
-mkdir($abx);
+list($ab, $abw) = genObj($abu);
+$aby = \Symfony\Component\Yaml\Yaml::dump($ab);
+$abz = ROOT_PATH . env('ORM_PATH', '/tools/bin/db');
+$acd = $abz . '/src/objs';
+if (!is_dir($acd)) {
+mkdir($acd);
 }
-file_put_contents("{$abx}/{$abr}.php", $abt);
-file_put_contents("{$abx}/Entities.{$abr}.dcm.yml", $abv);
+file_put_contents("{$acd}/{$abu}.php", $abw);
+file_put_contents("{$acd}/Entities.{$abu}.dcm.yml", $aby);
 }
-function sync_to_db($aby = 'run')
+function sync_to_db($ace = 'run')
 {
-echo $aby;
-$abw = ROOT_PATH . env('ORM_PATH', '/tools/bin/db');
-$aby = "cd {$abw} && sh ./{$aby}.sh";
-exec($aby, $lv);
-foreach ($lv as $dk) {
-echo \SqlFormatter::format($dk);
+echo $ace;
+$abz = ROOT_PATH . env('ORM_PATH', '/tools/bin/db');
+$ace = "cd {$abz} && sh ./{$ace}.sh";
+exec($ace, $lz);
+foreach ($lz as $ds) {
+echo \SqlFormatter::format($ds);
 }
 }
-function gen_schema($abz, $acd, $ace = false, $acf = false)
+function gen_schema($acf, $acg, $ach = false, $aci = false)
 {
-$acg = true;
-$ach = ROOT_PATH . '/tools/bin/db';
-$aci = [$ach . "/yml", $ach . "/src/objs"];
-$e = \Doctrine\ORM\Tools\Setup::createYAMLMetadataConfiguration($aci, $acg);
-$acj = \Doctrine\ORM\EntityManager::create($abz, $e);
-$ack = $acj->getConnection()->getDatabasePlatform();
-$ack->registerDoctrineTypeMapping('enum', 'string');
-$acl = [];
-foreach ($acd as $acm) {
-$acn = $acm['name'];
-include_once "{$ach}/src/objs/{$acn}.php";
-$acl[] = $acj->getClassMetadata('Entities\\' . $acn);
+$acj = true;
+$ack = ROOT_PATH . '/tools/bin/db';
+$acl = [$ack . "/yml", $ack . "/src/objs"];
+$e = \Doctrine\ORM\Tools\Setup::createYAMLMetadataConfiguration($acl, $acj);
+$acm = \Doctrine\ORM\EntityManager::create($acf, $e);
+$acn = $acm->getConnection()->getDatabasePlatform();
+$acn->registerDoctrineTypeMapping('enum', 'string');
+$aco = [];
+foreach ($acg as $acp) {
+$acq = $acp['name'];
+include_once "{$ack}/src/objs/{$acq}.php";
+$aco[] = $acm->getClassMetadata('Entities\\' . $acq);
 }
-$aco = new \Doctrine\ORM\Tools\SchemaTool($acj);
-$acp = $aco->getUpdateSchemaSql($acl, true);
-if (!$acp) {
+$acr = new \Doctrine\ORM\Tools\SchemaTool($acm);
+$acs = $acr->getUpdateSchemaSql($aco, true);
+if (!$acs) {
 echo "Nothing to do.";
 }
-$acq = [];
-foreach ($acp as $dk) {
-if (startWith($dk, 'DROP')) {
-$acq[] = $dk;
+$act = [];
+foreach ($acs as $ds) {
+if (startWith($ds, 'DROP')) {
+$act[] = $ds;
 }
-echo \SqlFormatter::format($dk);
+echo \SqlFormatter::format($ds);
 }
-if ($ace && !$acq || $acf) {
-$v = $aco->updateSchema($acl, true);
+if ($ach && !$act || $aci) {
+$v = $acr->updateSchema($aco, true);
 }
 }
-function gen_dbc_schema($acd)
+function gen_dbc_schema($acg)
 {
-$acr = \db::dbc();
-$abz = ['driver' => 'pdo_mysql', 'host' => $acr['server'], 'user' => $acr['username'], 'password' => $acr['password'], 'dbname' => $acr['database_name']];
-echo "Gen Schema for : {$acr['database_name']} <br>";
-$ace = get('write', false);
-$acs = get('force', false);
-gen_schema($abz, $acd, $ace, $acs);
+$acu = \db::dbc();
+$acf = ['driver' => 'pdo_mysql', 'host' => $acu['server'], 'user' => $acu['username'], 'password' => $acu['password'], 'dbname' => $acu['database_name']];
+echo "Gen Schema for : {$acu['database_name']} <br>";
+$ach = get('write', false);
+$acv = get('force', false);
+gen_schema($acf, $acg, $ach, $acv);
 }
-function gen_corp_schema($ce, $acd)
+function gen_corp_schema($cm, $acg)
 {
-\db::switch_dbc($ce);
-gen_dbc_schema($acd);
+\db::switch_dbc($cm);
+gen_dbc_schema($acg);
 }
-function buildcmd($ev = array())
+function buildcmd($cg = array())
 {
-$act = new ptlis\ShellCommand\CommandBuilder();
-$mo = ['LC_CTYPE=en_US.UTF-8'];
-if (isset($ev['args'])) {
-$mo = $ev['args'];
+$acw = new ptlis\ShellCommand\CommandBuilder();
+$ms = ['LC_CTYPE=en_US.UTF-8'];
+if (isset($cg['args'])) {
+$ms = $cg['args'];
 }
-if (isset($ev['add_args'])) {
-$mo = array_merge($mo, $ev['add_args']);
+if (isset($cg['add_args'])) {
+$ms = array_merge($ms, $cg['add_args']);
 }
-$acu = $act->setCommand('/usr/bin/env')->addArguments($mo)->buildCommand();
-return $acu;
+$acx = $acw->setCommand('/usr/bin/env')->addArguments($ms)->buildCommand();
+return $acx;
 }
-function exec_git($ev = array())
+function exec_git($cg = array())
 {
-$bp = '.';
-if (isset($ev['path'])) {
-$bp = $ev['path'];
+$bs = '.';
+if (isset($cg['path'])) {
+$bs = $cg['path'];
 }
-$mo = ["/usr/bin/git", "--git-dir={$bp}/.git", "--work-tree={$bp}"];
-$aby = 'status';
-if (isset($ev['cmd'])) {
-$aby = $ev['cmd'];
+$ms = ["/usr/bin/git", "--git-dir={$bs}/.git", "--work-tree={$bs}"];
+$ace = 'status';
+if (isset($cg['cmd'])) {
+$ace = $cg['cmd'];
 }
-$mo[] = $aby;
-$acu = buildcmd(['add_args' => $mo, $aby]);
-$dv = $acu->runSynchronous();
-return $dv->getStdOutLines();
+$ms[] = $ace;
+$acx = buildcmd(['add_args' => $ms, $ace]);
+$ei = $acx->runSynchronous();
+return $ei->getStdOutLines();
 }
 use db\Rest as rest;
-function getMetaData($abr, $acv = array())
+function getMetaData($abu, $acy = array())
 {
 ctx::pagesize(50);
-$acd = db::all('sys_objects');
-$acw = array_filter($acd, function ($bv) use($abr) {
-return $bv['name'] == $abr;
+$acg = db::all('sys_objects');
+$acz = array_filter($acg, function ($by) use($abu) {
+return $by['name'] == $abu;
 });
-$acw = array_shift($acw);
-$acx = $acw['id'];
-$acy = db::all('sys_object_item', ['oid' => $acx]);
-$acz = ['Id'];
-$ade = [0];
-$adf = [0.1];
-$cx = [['data' => 'id', 'renderer' => 'html', 'readOnly' => true]];
-foreach ($acy as $dk) {
-$br = $dk['name'];
-$abu = $dk['colname'] ? $dk['colname'] : $br;
-$c = $dk['type'];
-$lw = $dk['default'];
-$adg = $dk['col_width'];
-$adh = $dk['readonly'] ? ture : false;
-$adi = $dk['is_meta'];
-if ($adi) {
-$acz[] = $br;
-$ade[$abu] = $br;
-$adf[] = (double) $adg;
-if (in_array($abu, array_keys($acv))) {
-$cx[] = $acv[$abu];
+$acz = array_shift($acz);
+$ade = $acz['id'];
+$adf = db::all('sys_object_item', ['oid' => $ade]);
+$adg = ['Id'];
+$adh = [0];
+$adi = [0.1];
+$dj = [['data' => 'id', 'renderer' => 'html', 'readOnly' => true]];
+foreach ($adf as $ds) {
+$bu = $ds['name'];
+$abx = $ds['colname'] ? $ds['colname'] : $bu;
+$c = $ds['type'];
+$mn = $ds['default'];
+$adj = $ds['col_width'];
+$adk = $ds['readonly'] ? ture : false;
+$adl = $ds['is_meta'];
+if ($adl) {
+$adg[] = $bu;
+$adh[$abx] = $bu;
+$adi[] = (double) $adj;
+if (in_array($abx, array_keys($acy))) {
+$dj[] = $acy[$abx];
 } else {
-$cx[] = ['data' => $abu, 'renderer' => 'html', 'readOnly' => $adh];
+$dj[] = ['data' => $abx, 'renderer' => 'html', 'readOnly' => $adk];
 }
 }
 }
-$acz[] = "InTm";
-$acz[] = "St";
-$adf[] = 60;
-$adf[] = 10;
-$cx[] = ['data' => "_intm", 'renderer' => "html", 'readOnly' => true];
-$cx[] = ['data' => "_st", 'renderer' => "html"];
-$jr = ['objname' => $abr];
-return [$jr, $acz, $ade, $adf, $cx];
+$adg[] = "InTm";
+$adg[] = "St";
+$adi[] = 60;
+$adi[] = 10;
+$dj[] = ['data' => "_intm", 'renderer' => "html", 'readOnly' => true];
+$dj[] = ['data' => "_st", 'renderer' => "html"];
+$jw = ['objname' => $abu];
+return [$jw, $adg, $adh, $adi, $dj];
 }
-function getHotData($abr, $acv = array())
+function getHotData($abu, $acy = array())
 {
-$acz[] = "InTm";
-$acz[] = "St";
-$adf[] = 60;
-$adf[] = 10;
-$cx[] = ['data' => "_intm", 'renderer' => "html", 'readOnly' => true];
-$cx[] = ['data' => "_st", 'renderer' => "html"];
-$jr = ['objname' => $abr];
-return [$jr, $acz, $adf, $cx];
+$adg[] = "InTm";
+$adg[] = "St";
+$adi[] = 60;
+$adi[] = 10;
+$dj[] = ['data' => "_intm", 'renderer' => "html", 'readOnly' => true];
+$dj[] = ['data' => "_st", 'renderer' => "html"];
+$jw = ['objname' => $abu];
+return [$jw, $adg, $adi, $dj];
 }
-function fixfn($bw)
+function fixfn($ch)
 {
-foreach ($bw as $bx) {
-if (!function_exists($bx)) {
-eval("function {$bx}(){}");
+foreach ($ch as $ci) {
+if (!function_exists($ci)) {
+eval("function {$ci}(){}");
 }
 }
 }
@@ -3751,187 +3847,225 @@ return true;
 }
 return false;
 }
-function ms($br)
+function ms($bu)
 {
-return \ctx::container()->ms->getService($br);
+return \ctx::container()->ms->getService($bu);
 }
-function rms($br, $x = 'rest')
+function rms($bu, $x = 'rest')
 {
-return \ctx::container()->ms->getRest($br, $x);
+return \ctx::container()->ms->getRest($bu, $x);
 }
-function idxtree($adj, $adk)
+function idxtree($adm, $adn)
 {
-$is = [];
-$ab = \db::all($adj, ['pid' => $adk]);
-$adl = getKeyValues($ab, 'id');
-if ($adl) {
-foreach ($adl as $adk) {
-$is = array_merge($is, idxtree($adj, $adk));
+$ix = [];
+$ab = \db::all($adm, ['pid' => $adn]);
+$ado = getKeyValues($ab, 'id');
+if ($ado) {
+foreach ($ado as $adn) {
+$ix = array_merge($ix, idxtree($adm, $adn));
 }
 }
-return array_merge($adl, $is);
+return array_merge($ado, $ix);
 }
-function treelist($adj, $adk)
+function treelist($adm, $adn)
 {
-$mz = \db::row($adj, ['id' => $adk]);
-$adm = $mz['sub_ids'];
-$adm = json_decode($adm, true);
-$adn = \db::all($adj, ['id' => $adm]);
-$ado = 0;
-foreach ($adn as $bu => $adp) {
-if ($adp['pid'] == $adk) {
-$adn[$bu]['pid'] = 0;
-$ado++;
+$nr = \db::row($adm, ['id' => $adn]);
+$adp = $nr['sub_ids'];
+$adp = json_decode($adp, true);
+$adq = \db::all($adm, ['id' => $adp]);
+$adr = 0;
+foreach ($adq as $bx => $ads) {
+if ($ads['pid'] == $adn) {
+$adq[$bx]['pid'] = 0;
+$adr++;
 }
 }
-if ($ado < 2) {
-$adn[] = [];
+if ($adr < 2) {
+$adq[] = [];
 }
-return $adn;
-return array_merge([$mz], $adn);
+return $adq;
+return array_merge([$nr], $adq);
 }
-function switch_domain($aw, $ce)
+function switch_domain($aw, $cm)
 {
 $ak = cache($aw);
-$ak['userinfo']['corpid'] = $ce;
+$ak['userinfo']['corpid'] = $cm;
 cache_user($aw, $ak);
-$cf = ms('master')->get(['path' => '/master/corp/apps', 'data' => ['corpid' => $ce]]);
-$adq = $cf->json();
-$adq = getArg($adq, 'data');
-return $adq;
+$adt = [];
+$adu = ms('master');
+if ($adu) {
+$cn = ms('master')->get(['path' => '/master/corp/apps', 'data' => ['corpid' => $cm]]);
+$adt = $cn->json();
+$adt = getArg($adt, 'data');
 }
-function auto_reg_user($adr = 'username', $ads = 'password', $ch = 'user', $adt = 0)
+return $adt;
+}
+function auto_reg_user($adv = 'username', $adw = 'password', $cp = 'user', $adx = 0)
 {
-$lo = randstr(10);
-$ep = randstr(6);
-$ab = ["{$adr}" => $lo, "{$ads}" => $ep, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
-if ($adt) {
-list($ep, $abf) = hashsalt($ep);
-$ab[$ads] = $ep;
-$ab['salt'] = $abf;
+$ce = randstr(10);
+$cf = randstr(6);
+$ab = ["{$adv}" => $ce, "{$adw}" => $cf, '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
+if ($adx) {
+list($cf, $abi) = hashsalt($cf);
+$ab[$adw] = $cf;
+$ab['salt'] = $abi;
 } else {
-$ab[$ads] = md5($ep);
+$ab[$adw] = md5($cf);
 }
-return db::save($ch, $ab);
+return db::save($cp, $ab);
 }
-function refresh_token($ch, $bc, $gp = '')
+function refresh_token($cp, $be, $gu = '')
 {
-$adu = cguid();
-$ab = ['id' => $bc, 'token' => $adu];
-$ak = db::save($ch, $ab);
-if ($gp) {
-setcookie("token", $ak['token'], time() + 3600 * 24 * 365, '/', $gp);
+$ady = cguid();
+$ab = ['id' => $be, 'token' => $ady];
+$ak = db::save($cp, $ab);
+if ($gu) {
+setcookie("token", $ak['token'], time() + 3600 * 24 * 365, '/', $gu);
 } else {
 setcookie("token", $ak['token'], time() + 3600 * 24 * 365, '/');
 }
 return $ak;
 }
-function user_login($app, $adr = 'username', $ads = 'password', $ch = 'user', $adt = 0)
+function local_user($adz, $jx, $cp = 'user')
+{
+return \db::row($cp, [$adz => $jx]);
+}
+function user_login($app, $adv = 'username', $adw = 'password', $cp = 'user', $adx = 0)
 {
 $ab = ctx::data();
-$ab = select_keys([$adr, $ads], $ab);
-$lo = $ab[$adr];
-$ep = $ab[$ads];
-if (!$lo || !$ep) {
+$ab = select_keys([$adv, $adw], $ab);
+$ce = $ab[$adv];
+$cf = $ab[$adw];
+if (!$ce || !$cf) {
 return NULL;
 }
-$ak = \db::row($ch, ["{$adr}" => $lo]);
+$ak = \db::row($cp, ["{$adv}" => $ce]);
 if ($ak) {
-if ($adt) {
-$abf = $ak['salt'];
-list($ep, $abf) = hashsalt($ep, $abf);
+if ($adx) {
+$abi = $ak['salt'];
+list($cf, $abi) = hashsalt($cf, $abi);
 } else {
-$ep = md5($ep);
+$cf = md5($cf);
 }
-if ($ep == $ak[$ads]) {
+if ($cf == $ak[$adw]) {
 return $ak;
 }
 }
 return NULL;
 }
-function uc_auto_reg_user($eo, $adv)
+function uc_auto_reg_user($ev, $aef)
 {
-$v = \uc::find_user(['username' => $eo]);
+$v = \uc::find_user(['username' => $ev]);
 if ($v['code'] != 0) {
-$v = uc::reg_user($eo, $adv);
+$v = uc::reg_user($ev, $aef);
 } else {
 $v = ['code' => 1, 'data' => []];
 }
 return $v;
 }
-function uc_login_data($bg)
+function uc_login_data($bi)
 {
-$ay = uc::user_info($bg);
+$ay = uc::user_info($bi);
 $ay = $ay['data'];
-$fl = [];
-$adw = uc::user_role($bg, 1);
-$lq = [];
-if ($adw['code'] == 0) {
-$lq = $adw['data']['roles'];
-if ($lq) {
-foreach ($lq as $k => $fj) {
-$fl[] = $fj['name'];
+$fq = [];
+$aeg = uc::user_role($bi, 1);
+$lu = [];
+if ($aeg['code'] == 0) {
+$lu = $aeg['data']['roles'];
+if ($lu) {
+foreach ($lu as $k => $fo) {
+$fq[] = $fo['name'];
 }
 }
 }
-$ay['roles'] = $fl;
-$adx = uc::user_domain($bg);
-$ay['corps'] = array_values($adx['data']);
-return [$bg, $ay, $lq];
+$ay['roles'] = $fq;
+$aeh = uc::user_domain($bi);
+$ay['corps'] = array_values($aeh['data']);
+return [$bi, $ay, $lu];
 }
-function uc_user_login($app, $adr = 'username', $ads = 'password')
+function uc_user_login($app, $adv = 'username', $adw = 'password')
 {
 log_time("uc_user_login start");
-$tv = $app->getContainer();
-$z = $tv->request;
+$ty = $app->getContainer();
+$z = $ty->request;
 $ab = $z->getParams();
-$ab = select_keys([$adr, $ads], $ab);
-$lo = $ab[$adr];
-$ep = $ab[$ads];
-if (!$lo || !$ep) {
+$ab = select_keys([$adv, $adw], $ab);
+$ce = $ab[$adv];
+$cf = $ab[$adw];
+if (!$ce || !$cf) {
 return NULL;
 }
 uc::init();
-$v = uc::pwd_login($lo, $ep);
+$v = uc::pwd_login($ce, $cf);
 if ($v['code'] != 0) {
 ret($v['code'], $v['message']);
 }
-$bg = $v['data']['access_token'];
-return uc_login_data($bg);
+$bi = $v['data']['access_token'];
+return uc_login_data($bi);
+}
+function cube_user_login($app, $adv = 'username', $adw = 'password')
+{
+$ty = $app->getContainer();
+$z = $ty->request;
+$ab = $z->getParams();
+$ab = select_keys([$adv, $adw], $ab);
+$ce = $ab[$adv];
+$cf = $ab[$adw];
+if (!$ce || !$cf) {
+return NULL;
+}
+$ab = cube::login($ce, $cf);
+$ak = cube::user();
+$ak['user']['modules'] = cube::modules()['modules'];
+$ak['passport'] = cube::$passport;
+$fq = cube::roles()['roles'];
+$aei = indexArray($fq, 'id');
+$lu = [];
+if ($ak['user']['roles']) {
+foreach ($ak['user']['roles'] as &$aej) {
+$aej['name'] = $aei[$aej['role_id']]['name'];
+$aej['title'] = $aei[$aej['role_id']]['title'];
+$aej['description'] = $aei[$aej['role_id']]['description'];
+$lu[] = $aej['name'];
+}
+}
+$ak['user']['role_list'] = $ak['user']['roles'];
+$ak['user']['roles'] = $lu;
+return $ak;
 }
 function check_auth($app)
 {
 $z = req();
-$ady = false;
-$adz = cfg::get('public_paths');
-$fs = $z->getUri()->getPath();
-if ($fs == '/') {
-$ady = true;
+$aek = false;
+$ael = cfg::get('public_paths');
+$fx = $z->getUri()->getPath();
+if ($fx == '/') {
+$aek = true;
 } else {
-foreach ($adz as $bp) {
-if (startWith($fs, $bp)) {
-$ady = true;
+foreach ($ael as $bs) {
+if (startWith($fx, $bs)) {
+$aek = true;
 }
 }
 }
-info("check_auth: {$ady} {$fs}");
-if (!$ady) {
+info("check_auth: {$aek} {$fx}");
+if (!$aek) {
 if (is_weixin()) {
-$gq = $_SERVER['REQUEST_URI'];
-header('Location: /api/auth/wechat?_r=' . $gq);
+$gv = $_SERVER['REQUEST_URI'];
+header('Location: /api/auth/wechat?_r=' . $gv);
 }
 ret(1, 'auth error');
 }
 }
-function extractUserData($aef)
+function extractUserData($aem)
 {
-return ['githubLogin' => $aef['login'], 'githubName' => $aef['name'], 'githubId' => $aef['id'], 'repos_url' => $aef['repos_url'], 'avatar_url' => $aef['avatar_url'], '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
+return ['githubLogin' => $aem['login'], 'githubName' => $aem['name'], 'githubId' => $aem['id'], 'repos_url' => $aem['repos_url'], 'avatar_url' => $aem['avatar_url'], '_intm' => date('Y-m-d H:i:s'), '_uptm' => date('Y-m-d H:i:s')];
 }
-function output_user($ak, $aeg = false)
+function output_user($ak, $aen = false)
 {
 unset($ak['passwd']);
 unset($ak['salt']);
-if (!$aeg) {
+if (!$aen) {
 unset($ak['token']);
 }
 unset($ak['access-token']);
@@ -3952,35 +4086,35 @@ $_SERVER['REQUEST_URI'] = '/pub/psysh';
 }
 $app = new \Slim\App();
 ctx::app($app);
-function tpl($bn, $aeh = '.html')
+function tpl($bq, $aeo = '.html')
 {
-$bn = $bn . $aeh;
-$aei = cfg::get('tpl_prefix');
-$aej = "{$aei['pc']}/{$bn}";
-$aek = "{$aei['mobile']}/{$bn}";
-info("tpl: {$aej} | {$aek}");
-return isMobile() ? $aek : $aej;
+$bq = $bq . $aeo;
+$aep = cfg::get('tpl_prefix');
+$aeq = "{$aep['pc']}/{$bq}";
+$aer = "{$aep['mobile']}/{$bq}";
+info("tpl: {$aeq} | {$aer}");
+return isMobile() ? $aer : $aeq;
 }
 function req()
 {
 return ctx::req();
 }
-function get($br, $lw = '')
+function get($bu, $mn = '')
 {
 $z = req();
-$u = $z->getParam($br, $lw);
-if ($u == $lw) {
-$ael = ctx::gets();
-if (isset($ael[$br])) {
-return $ael[$br];
+$u = $z->getParam($bu, $mn);
+if ($u == $mn) {
+$aes = ctx::gets();
+if (isset($aes[$bu])) {
+return $aes[$bu];
 }
 }
 return $u;
 }
-function post($br, $lw = '')
+function post($bu, $mn = '')
 {
 $z = req();
-return $z->getParam($br, $lw);
+return $z->getParam($bu, $mn);
 }
 function gets()
 {
@@ -4007,151 +4141,151 @@ return $z->getParams();
 function uripath()
 {
 $z = req();
-$fs = $z->getUri()->getPath();
-if (!startWith($fs, '/')) {
-$fs = '/' . $fs;
+$fx = $z->getUri()->getPath();
+if (!startWith($fx, '/')) {
+$fx = '/' . $fx;
 }
-return $fs;
+return $fx;
 }
-function host_str($rz)
+function host_str($sv)
 {
-$aem = '';
+$aet = '';
 if (isset($_SERVER['HTTP_HOST'])) {
-$aem = $_SERVER['HTTP_HOST'];
+$aet = $_SERVER['HTTP_HOST'];
 }
-return " [ {$aem} ] " . $rz;
+return " [ {$aet} ] " . $sv;
 }
-function debug($rz)
+function debug($sv)
 {
 $m = \cfg::get('app');
 if (isset($m['log_level']) && $m['log_level'] == 100) {
 if (ctx::logger()) {
-$rz = format_log_str($rz, getCallerStr(3));
-ctx::logger()->debug(host_str($rz));
+$sv = format_log_str($sv, getCallerStr(3));
+ctx::logger()->debug(host_str($sv));
 }
 }
 }
-function warn($rz)
+function warn($sv)
 {
 if (ctx::logger()) {
-$rz = format_log_str($rz, getCallerStr(3));
-ctx::logger()->warn(host_str($rz));
+$sv = format_log_str($sv, getCallerStr(3));
+ctx::logger()->warn(host_str($sv));
 }
 }
-function info($rz)
+function info($sv)
 {
 if (ctx::logger()) {
-$rz = format_log_str($rz, getCallerStr(3));
-ctx::logger()->info(host_str($rz));
+$sv = format_log_str($sv, getCallerStr(3));
+ctx::logger()->info(host_str($sv));
 }
 }
-function format_log_str($rz, $aen = '')
+function format_log_str($sv, $aeu = '')
 {
-if (is_array($rz)) {
-$rz = json_encode($rz);
+if (is_array($sv)) {
+$sv = json_encode($sv);
 }
-return "{$rz} [ ::{$aen} ]";
+return "{$sv} [ ::{$aeu} ]";
 }
-function ck_owner($dk)
+function ck_owner($ds)
 {
-$bc = ctx::uid();
-$jy = $dk['uid'];
-debug("ck_owner: {$bc} {$jy}");
-return $bc == $jy;
+$be = ctx::uid();
+$ko = $ds['uid'];
+debug("ck_owner: {$be} {$ko}");
+return $be == $ko;
 }
-function _err($br)
+function _err($bu)
 {
-return cfg::get($br, 'error');
+return cfg::get($bu, 'error');
 }
 $__log_time__ = 0;
 $__log_begin_time__ = 0;
-function log_time($bt = '', $abj = 0)
+function log_time($bw = '', $abm = 0)
 {
 global $__log_time__, $__log_begin_time__;
-list($wy, $wz) = explode(" ", microtime());
-$aeo = (double) $wy + (double) $wz;
+list($xz, $yz) = explode(" ", microtime());
+$aev = (double) $xz + (double) $yz;
 if (!$__log_time__) {
-$__log_begin_time__ = $aeo;
-$__log_time__ = $aeo;
-$bp = uripath();
-debug("usetime: --- {$bp} ---");
-return $aeo;
+$__log_begin_time__ = $aev;
+$__log_time__ = $aev;
+$bs = uripath();
+debug("usetime: --- {$bs} ---");
+return $aev;
 }
-if ($abj && $abj == 'begin') {
-$aep = $__log_begin_time__;
+if ($abm && $abm == 'begin') {
+$aew = $__log_begin_time__;
 } else {
-$aep = $abj ? $abj : $__log_time__;
+$aew = $abm ? $abm : $__log_time__;
 }
-$abl = $aeo - $aep;
-$abl *= 1000;
-debug("usetime: ---  {$abl} {$bt}  ---");
-$__log_time__ = $aeo;
-return $aeo;
+$abo = $aev - $aew;
+$abo *= 1000;
+debug("usetime: ---  {$abo} {$bw}  ---");
+$__log_time__ = $aev;
+return $aev;
 }
 use core\Service as ms;
 $p = $app->getContainer();
-$p['view'] = function ($tv) {
-$bo = new \Slim\Views\Twig(ROOT_PATH . '/templates', ['cache' => false]);
-$bo->addExtension(new \Slim\Views\TwigExtension($tv['router'], $tv['request']->getUri()));
-return $bo;
+$p['view'] = function ($ty) {
+$br = new \Slim\Views\Twig(ROOT_PATH . '/templates', ['cache' => false]);
+$br->addExtension(new \Slim\Views\TwigExtension($ty['router'], $ty['request']->getUri()));
+return $br;
 };
-$p['logger'] = function ($tv) {
+$p['logger'] = function ($ty) {
 if (is_docker_env()) {
-$aeq = '/ws/log/app.log';
+$aex = '/ws/log/app.log';
 } else {
-$aer = cfg::get('logdir');
-if ($aer) {
-$aeq = $aer . '/app.log';
+$aey = cfg::get('logdir');
+if ($aey) {
+$aex = $aey . '/app.log';
 } else {
-$aeq = __DIR__ . '/../app.log';
+$aex = __DIR__ . '/../app.log';
 }
 }
-$aes = ['name' => '', 'path' => $aeq];
-$aet = new \Monolog\Logger($aes['name']);
-$aet->pushProcessor(new \Monolog\Processor\UidProcessor());
-$aeu = \cfg::get('app');
-$ns = isset($aeu['log_level']) ? $aeu['log_level'] : '';
-if (!$ns) {
-$ns = \Monolog\Logger::INFO;
+$aez = ['name' => '', 'path' => $aex];
+$afg = new \Monolog\Logger($aez['name']);
+$afg->pushProcessor(new \Monolog\Processor\UidProcessor());
+$afh = \cfg::get('app');
+$nw = isset($afh['log_level']) ? $afh['log_level'] : '';
+if (!$nw) {
+$nw = \Monolog\Logger::INFO;
 }
-$aet->pushHandler(new \Monolog\Handler\StreamHandler($aes['path'], $ns));
-return $aet;
+$afg->pushHandler(new \Monolog\Handler\StreamHandler($aez['path'], $nw));
+return $afg;
 };
 log_time();
 unset($app->getContainer()['phpErrorHandler']);
 unset($app->getContainer()['errorHandler']);
-$p['notFoundHandler'] = function ($tv) {
+$p['notFoundHandler'] = function ($ty) {
 if (!\ctx::isFoundRoute()) {
-return function ($fp, $fq) use($tv) {
-return $tv['response']->withStatus(404)->withHeader('Content-Type', 'text/html')->write('Page not found');
+return function ($fu, $fv) use($ty) {
+return $ty['response']->withStatus(404)->withHeader('Content-Type', 'text/html')->write('Page not found');
 };
 }
-return function ($fp, $fq) use($tv) {
-return $tv['response'];
+return function ($fu, $fv) use($ty) {
+return $ty['response'];
 };
 };
-$p['ms'] = function ($tv) {
+$p['ms'] = function ($ty) {
 ms::init();
 return new ms();
 };
-\Valitron\Validator::addRule('mobile', function ($ju, $l, array $bd) {
+\Valitron\Validator::addRule('mobile', function ($jz, $l, array $az) {
 return preg_match("/^1[3|4|5|7|8]\\d{9}\$/", $l) ? TRUE : FALSE;
 }, 'must be mobile number');
 log_time("DEPS END");
 log_time("ROUTES BEGIN");
 use Lead\Dir\Dir as dir;
-$aev = ROOT_PATH . '/routes';
-if (folder_exist($aev)) {
-$q = dir::scan($aev, ['type' => 'file']);
+$afi = ROOT_PATH . '/routes';
+if (folder_exist($afi)) {
+$q = dir::scan($afi, ['type' => 'file']);
 foreach ($q as $r) {
 if (basename($r) != 'routes.php' && !endWith($r, '.DS_Store')) {
 require_once $r;
 }
 }
 }
-$aew = cfg::get('opt_route_list');
-if ($aew) {
-foreach ($aew as $aj) {
+$afj = cfg::get('opt_route_list');
+if ($afj) {
+foreach ($afj as $aj) {
 info("def route {$aj}");
 $app->options($aj, function () {
 ret([]);
@@ -4168,13 +4302,13 @@ cache_clear();
 sendJSON([]);
 });
 if (cfg::get('enable_blockly')) {
-$aex = cache('blockly_routes_key', function () {
+$afk = cache('blockly_routes_key', function () {
 return db::all('sys_blockly', ['AND' => ['code_type' => 'route']]);
 }, 86400, 1);
-foreach ($aex as $aey) {
-$aez = get('nb');
-if ($aez != 1) {
-@eval($aey['phpcode']);
+foreach ($afk as $afl) {
+$afm = get('nb');
+if ($afm != 1) {
+@eval($afl['phpcode']);
 }
 }
 }
@@ -4182,238 +4316,238 @@ log_time("ROUTES ENG");
 }
 namespace {
 use db\Rest as rest;
-function def_hot_rest($app, $br, $dp = array())
+function def_hot_rest($app, $bu, $dx = array())
 {
-$app->options("/hot/{$br}", function () {
+$app->options("/hot/{$bu}", function () {
 ret([]);
 });
-$app->options("/hot/{$br}/{id}", function () {
+$app->options("/hot/{$bu}/{id}", function () {
 ret([]);
 });
-$app->get("/hot/{$br}", function () use($dp, $br) {
-$abr = $dp['objname'];
-$afg = $br;
-$cp = rest::getList($afg);
-$acv = isset($dp['cols_map']) ? $dp['cols_map'] : [];
-list($jr, $acz, $ade, $adf, $cx) = getMetaData($abr, $acv);
-$adf[0] = 10;
-$v['data'] = ['meta' => $jr, 'list' => $cp['data'], 'colHeaders' => $acz, 'colWidths' => $adf, 'cols' => $cx];
+$app->get("/hot/{$bu}", function () use($dx, $bu) {
+$abu = $dx['objname'];
+$afn = $bu;
+$cx = rest::getList($afn);
+$acy = isset($dx['cols_map']) ? $dx['cols_map'] : [];
+list($jw, $adg, $adh, $adi, $dj) = getMetaData($abu, $acy);
+$adi[0] = 10;
+$v['data'] = ['meta' => $jw, 'list' => $cx['data'], 'colHeaders' => $adg, 'colWidths' => $adi, 'cols' => $dj];
 ret($v);
 });
-$app->get("/hot/{$br}/param", function () use($dp, $br) {
-$abr = $dp['objname'];
-$afg = $br;
-$cp = rest::getList($afg);
-list($acz, $afh, $ade, $adf, $cx) = getHotColMap1($afg);
-$jr = ['objname' => $abr];
-$adf[0] = 10;
-$v['data'] = ['meta' => $jr, 'list' => [], 'colHeaders' => $acz, 'colHeaderDatas' => $ade, 'colHeaderGroupDatas' => $afh, 'colWidths' => $adf, 'cols' => $cx];
+$app->get("/hot/{$bu}/param", function () use($dx, $bu) {
+$abu = $dx['objname'];
+$afn = $bu;
+$cx = rest::getList($afn);
+list($adg, $afo, $adh, $adi, $dj) = getHotColMap1($afn);
+$jw = ['objname' => $abu];
+$adi[0] = 10;
+$v['data'] = ['meta' => $jw, 'list' => [], 'colHeaders' => $adg, 'colHeaderDatas' => $adh, 'colHeaderGroupDatas' => $afo, 'colWidths' => $adi, 'cols' => $dj];
 ret($v);
 });
-$app->post("/hot/{$br}", function () use($dp, $br) {
-$afg = $br;
-$cp = rest::postData($afg);
-ret($cp);
+$app->post("/hot/{$bu}", function () use($dx, $bu) {
+$afn = $bu;
+$cx = rest::postData($afn);
+ret($cx);
 });
-$app->put("/hot/{$br}/{id}", function ($z, $bl, $mo) use($dp, $br) {
-$afg = $br;
+$app->put("/hot/{$bu}/{id}", function ($z, $bo, $ms) use($dx, $bu) {
+$afn = $bu;
 $ab = ctx::data();
 if (isset($ab['trans-word']) && isset($ab[$ab['trans-from']])) {
-$afi = $ab['trans-from'];
-$afj = $ab['trans-to'];
-$u = util\Pinyin::get($ab[$afi]);
-$ab[$afj] = $u;
+$afp = $ab['trans-from'];
+$afq = $ab['trans-to'];
+$u = util\Pinyin::get($ab[$afp]);
+$ab[$afq] = $u;
 }
 ctx::data($ab);
-$cp = rest::putData($afg, $mo['id']);
-ret($cp);
+$cx = rest::putData($afn, $ms['id']);
+ret($cx);
 });
 }
-function getHotColMap1($afg)
+function getHotColMap1($afn)
 {
-$afk = $afg . '_param';
-$afl = $afg . '_opt';
-$afm = $afg . '_opt_ext';
+$afr = $afn . '_param';
+$afs = $afn . '_opt';
+$aft = $afn . '_opt_ext';
 ctx::pagesize(50);
-$cp = rest::getList($afk);
-$afn = getKeyValues($cp['data'], 'id');
-$bd = indexArray($cp['data'], 'id');
-$ev = db::all($afl, ['AND' => ['pid' => $afn]]);
-$ev = indexArray($ev, 'id');
-$afn = array_keys($ev);
-$afo = db::all($afm, ['AND' => ['pid' => $afn]]);
-$afo = groupArray($afo, 'pid');
-$acz = [];
-$ade = [];
-$afh = [];
-$adf = [];
-$cx = [];
-foreach ($bd as $k => $afp) {
-$acz[] = $afp['label'];
-$afh[$afp['name']] = $afp['group_name'] ? $afp['group_name'] : $afp['label'];
-$ade[$afp['name']] = $afp['label'];
-$adf[] = $afp['width'];
-$cx[$afp['name']] = ['data' => $afp['name'], 'renderer' => 'html'];
+$cx = rest::getList($afr);
+$afu = getKeyValues($cx['data'], 'id');
+$az = indexArray($cx['data'], 'id');
+$cg = db::all($afs, ['AND' => ['pid' => $afu]]);
+$cg = indexArray($cg, 'id');
+$afu = array_keys($cg);
+$afv = db::all($aft, ['AND' => ['pid' => $afu]]);
+$afv = groupArray($afv, 'pid');
+$adg = [];
+$adh = [];
+$afo = [];
+$adi = [];
+$dj = [];
+foreach ($az as $k => $afw) {
+$adg[] = $afw['label'];
+$afo[$afw['name']] = $afw['group_name'] ? $afw['group_name'] : $afw['label'];
+$adh[$afw['name']] = $afw['label'];
+$adi[] = $afw['width'];
+$dj[$afw['name']] = ['data' => $afw['name'], 'renderer' => 'html'];
 }
-foreach ($afo as $k => $ej) {
-$afq = '';
-$adk = 0;
-$afr = $ev[$k];
-$afs = $afr['pid'];
-$afp = $bd[$afs];
-$aft = $afp['label'];
-$afq = $afp['name'];
-$afu = $afp['type'];
-if ($adk) {
+foreach ($afv as $k => $eq) {
+$afx = '';
+$adn = 0;
+$afy = $cg[$k];
+$afz = $afy['pid'];
+$afw = $az[$afz];
+$agh = $afw['label'];
+$afx = $afw['name'];
+$agi = $afw['type'];
+if ($adn) {
 }
-if ($afq) {
-$cl = ['data' => $afq, 'type' => 'autocomplete', 'strict' => false, 'source' => array_values(getKeyValues($ej, 'option'))];
-if ($afu == 'select2') {
-$cl['editor'] = 'select2';
-$afv = [];
-foreach ($ej as $afw) {
-$dk['id'] = $afw['id'];
-$dk['text'] = $afw['option'];
-$afv[] = $dk;
+if ($afx) {
+$ct = ['data' => $afx, 'type' => 'autocomplete', 'strict' => false, 'source' => array_values(getKeyValues($eq, 'option'))];
+if ($agi == 'select2') {
+$ct['editor'] = 'select2';
+$agj = [];
+foreach ($eq as $agk) {
+$ds['id'] = $agk['id'];
+$ds['text'] = $agk['option'];
+$agj[] = $ds;
 }
-$cl['select2Options'] = ['data' => $afv, 'dropdownAutoWidth' => true, 'width' => 'resolve'];
-unset($cl['type']);
+$ct['select2Options'] = ['data' => $agj, 'dropdownAutoWidth' => true, 'width' => 'resolve'];
+unset($ct['type']);
 }
-$cx[$afq] = $cl;
+$dj[$afx] = $ct;
 }
 }
-$cx = array_values($cx);
-return [$acz, $afh, $ade, $adf, $cx];
-$ab = ['rows' => $cp, 'pids' => $afn, 'props' => $afx, 'opts' => $ev, 'cols_map' => $acv];
-$acv = [];
-return $acv;
+$dj = array_values($dj);
+return [$adg, $afo, $adh, $adi, $dj];
+$ab = ['rows' => $cx, 'pids' => $afu, 'props' => $agl, 'opts' => $cg, 'cols_map' => $acy];
+$acy = [];
+return $acy;
 }
 }
 namespace {
 use db\Rest as rest;
 use util\Pinyin;
-function def_hot_opt_rest($app, $br, $dp = array())
+function def_hot_opt_rest($app, $bu, $dx = array())
 {
-$afg = $br;
-$afy = "{$br}_ext";
-$app->get("/hot/{$br}", function () use($afg, $afy) {
-$km = get('oid');
-$adk = get('pid');
-$cj = "select * from `{$afg}` pp join `{$afy}` pv\n              on pp.id = pv.`pid`\n              where pp.oid={$km} and pp.pid={$adk}";
-$cp = db::query($cj);
-$ab = groupArray($cp, 'name');
-$acz = ['Id', 'Oid', 'RowNum'];
-$adf = [5, 5, 5];
-$cx = [['data' => 'id', 'renderer' => 'html', 'readOnly' => true], ['data' => 'oid', 'renderer' => 'html', 'readOnly' => true], ['data' => '_rownum', 'renderer' => 'html', 'readOnly' => true]];
+$afn = $bu;
+$agm = "{$bu}_ext";
+$app->get("/hot/{$bu}", function () use($afn, $agm) {
+$kr = get('oid');
+$adn = get('pid');
+$cr = "select * from `{$afn}` pp join `{$agm}` pv\n              on pp.id = pv.`pid`\n              where pp.oid={$kr} and pp.pid={$adn}";
+$cx = db::query($cr);
+$ab = groupArray($cx, 'name');
+$adg = ['Id', 'Oid', 'RowNum'];
+$adi = [5, 5, 5];
+$dj = [['data' => 'id', 'renderer' => 'html', 'readOnly' => true], ['data' => 'oid', 'renderer' => 'html', 'readOnly' => true], ['data' => '_rownum', 'renderer' => 'html', 'readOnly' => true]];
 $ai = [];
-foreach ($ab as $bu => $bv) {
-$acz[] = $bv[0]['label'];
-$adf[] = $bv[0]['col_width'];
-$cx[] = ['data' => $bu, 'renderer' => 'html'];
-$afz = [];
-foreach ($bv as $k => $dk) {
-$ai[$dk['_rownum']][$bu] = $dk['option'];
-if ($bu == 'value') {
-if (!isset($ai[$dk['_rownum']]['id'])) {
-$ai[$dk['_rownum']]['id'] = $dk['id'];
-$ai[$dk['_rownum']]['oid'] = $km;
-$ai[$dk['_rownum']]['_rownum'] = $dk['_rownum'];
+foreach ($ab as $bx => $by) {
+$adg[] = $by[0]['label'];
+$adi[] = $by[0]['col_width'];
+$dj[] = ['data' => $bx, 'renderer' => 'html'];
+$agn = [];
+foreach ($by as $k => $ds) {
+$ai[$ds['_rownum']][$bx] = $ds['option'];
+if ($bx == 'value') {
+if (!isset($ai[$ds['_rownum']]['id'])) {
+$ai[$ds['_rownum']]['id'] = $ds['id'];
+$ai[$ds['_rownum']]['oid'] = $kr;
+$ai[$ds['_rownum']]['_rownum'] = $ds['_rownum'];
 }
 }
 }
 }
 $ai = array_values($ai);
-$v['data'] = ['list' => $ai, 'colHeaders' => $acz, 'colWidths' => $adf, 'cols' => $cx];
+$v['data'] = ['list' => $ai, 'colHeaders' => $adg, 'colWidths' => $adi, 'cols' => $dj];
 ret($v);
 });
-$app->get("/hot/{$br}_addprop", function () use($afg, $afy) {
-$km = get('oid');
-$adk = get('pid');
-$agh = get('propname');
-if ($agh != 'value' && !checkOptPropVal($km, $adk, 'value', $afg, $afy)) {
-addOptProp($km, $adk, 'value', $afg, $afy);
+$app->get("/hot/{$bu}_addprop", function () use($afn, $agm) {
+$kr = get('oid');
+$adn = get('pid');
+$ago = get('propname');
+if ($ago != 'value' && !checkOptPropVal($kr, $adn, 'value', $afn, $agm)) {
+addOptProp($kr, $adn, 'value', $afn, $agm);
 }
-if (!checkOptPropVal($km, $adk, $agh, $afg, $afy)) {
-addOptProp($km, $adk, $agh, $afg, $afy);
+if (!checkOptPropVal($kr, $adn, $ago, $afn, $agm)) {
+addOptProp($kr, $adn, $ago, $afn, $agm);
 }
 ret([11]);
 });
-$app->options("/hot/{$br}", function () {
+$app->options("/hot/{$bu}", function () {
 ret([]);
 });
-$app->options("/hot/{$br}/{id}", function () {
+$app->options("/hot/{$bu}/{id}", function () {
 ret([]);
 });
-$app->post("/hot/{$br}", function () use($afg, $afy) {
+$app->post("/hot/{$bu}", function () use($afn, $agm) {
 $ab = ctx::data();
-$adk = $ab['pid'];
-$km = $ab['oid'];
-$agi = getArg($ab, '_rownum');
-$agj = db::row($afg, ['AND' => ['oid' => $km, 'pid' => $adk, 'name' => 'value']]);
-if (!$agj) {
-addOptProp($km, $adk, 'value', $afg, $afy);
+$adn = $ab['pid'];
+$kr = $ab['oid'];
+$agp = getArg($ab, '_rownum');
+$agq = db::row($afn, ['AND' => ['oid' => $kr, 'pid' => $adn, 'name' => 'value']]);
+if (!$agq) {
+addOptProp($kr, $adn, 'value', $afn, $agm);
 }
-$agk = $agj['id'];
-$agl = db::obj()->max($afy, '_rownum', ['pid' => $agk]);
-$ab = ['oid' => $km, 'pid' => $agk, '_rownum' => $agl + 1];
-db::save($afy, $ab);
-$v = ['oid' => $km, '_rownum' => $agi, 'prop' => $agj, 'maxrow' => $agl];
+$agr = $agq['id'];
+$ags = db::obj()->max($agm, '_rownum', ['pid' => $agr]);
+$ab = ['oid' => $kr, 'pid' => $agr, '_rownum' => $ags + 1];
+db::save($agm, $ab);
+$v = ['oid' => $kr, '_rownum' => $agp, 'prop' => $agq, 'maxrow' => $ags];
 ret($v);
 });
-$app->put("/hot/{$br}/{id}", function ($z, $bl, $mo) use($afy, $afg) {
+$app->put("/hot/{$bu}/{id}", function ($z, $bo, $ms) use($agm, $afn) {
 $ab = ctx::data();
-$adk = $ab['pid'];
-$km = $ab['oid'];
-$agi = $ab['_rownum'];
-$agi = getArg($ab, '_rownum');
+$adn = $ab['pid'];
+$kr = $ab['oid'];
+$agp = $ab['_rownum'];
+$agp = getArg($ab, '_rownum');
 $aw = $ab['token'];
-$bc = $ab['uid'];
-$dk = dissoc($ab, ['oid', 'pid', '_rownum', '_uptm', 'uniqid', 'token', 'uid']);
-debug($dk);
-$k = key($dk);
-$u = $dk[$k];
-$agj = db::row($afg, ['AND' => ['pid' => $adk, 'oid' => $km, 'name' => $k]]);
-info("{$adk} {$km} {$k}");
-$agk = $agj['id'];
-$agm = db::obj()->has($afy, ['AND' => ['pid' => $agk, '_rownum' => $agi]]);
-if ($agm) {
+$be = $ab['uid'];
+$ds = dissoc($ab, ['oid', 'pid', '_rownum', '_uptm', 'uniqid', 'token', 'uid']);
+debug($ds);
+$k = key($ds);
+$u = $ds[$k];
+$agq = db::row($afn, ['AND' => ['pid' => $adn, 'oid' => $kr, 'name' => $k]]);
+info("{$adn} {$kr} {$k}");
+$agr = $agq['id'];
+$agt = db::obj()->has($agm, ['AND' => ['pid' => $agr, '_rownum' => $agp]]);
+if ($agt) {
 debug("has cell ...");
-$cj = "update {$afy} set `option`='{$u}' where _rownum={$agi} and pid={$agk}";
-debug($cj);
-db::exec($cj);
+$cr = "update {$agm} set `option`='{$u}' where _rownum={$agp} and pid={$agr}";
+debug($cr);
+db::exec($cr);
 } else {
 debug("has no cell ...");
-$ab = ['oid' => $km, 'pid' => $agk, '_rownum' => $agi, 'option' => $u];
-db::save($afy, $ab);
+$ab = ['oid' => $kr, 'pid' => $agr, '_rownum' => $agp, 'option' => $u];
+db::save($agm, $ab);
 }
-$v = ['item' => $dk, 'oid' => $km, '_rownum' => $agi, 'key' => $k, 'val' => $u, 'prop' => $agj, 'sql' => $cj];
+$v = ['item' => $ds, 'oid' => $kr, '_rownum' => $agp, 'key' => $k, 'val' => $u, 'prop' => $agq, 'sql' => $cr];
 ret($v);
 });
 }
-function checkOptPropVal($km, $adk, $br, $afg, $afy)
+function checkOptPropVal($kr, $adn, $bu, $afn, $agm)
 {
-return db::obj()->has($afg, ['AND' => ['name' => $br, 'oid' => $km, 'pid' => $adk]]);
+return db::obj()->has($afn, ['AND' => ['name' => $bu, 'oid' => $kr, 'pid' => $adn]]);
 }
-function addOptProp($km, $adk, $agh, $afg, $afy)
+function addOptProp($kr, $adn, $ago, $afn, $agm)
 {
-$br = Pinyin::get($agh);
-$ab = ['oid' => $km, 'pid' => $adk, 'label' => $agh, 'name' => $br];
-$agj = db::save($afg, $ab);
-$ab = ['_rownum' => 1, 'oid' => $km, 'pid' => $agj['id']];
-db::save($afy, $ab);
-return $agj;
+$bu = Pinyin::get($ago);
+$ab = ['oid' => $kr, 'pid' => $adn, 'label' => $ago, 'name' => $bu];
+$agq = db::save($afn, $ab);
+$ab = ['_rownum' => 1, 'oid' => $kr, 'pid' => $agq['id']];
+db::save($agm, $ab);
+return $agq;
 }
 }
 namespace {
 log_time("MID BEGIN");
 $app->add(new \mid\TwigMid());
 $app->add(new \mid\RestMid());
-$agn = \cfg::load('mid');
-if ($agn) {
-foreach ($agn as $bu => $m) {
-$ago = "\\{$bu}";
-debug("load mid: {$ago}");
-$app->add(new $ago());
+$agu = \cfg::load('mid');
+if ($agu) {
+foreach ($agu as $bx => $m) {
+$agv = "\\{$bx}";
+debug("load mid: {$agv}");
+$app->add(new $agv());
 }
 }
 if (file_exists(ROOT_PATH . DS . 'lib/mid/MyAuthMid.php')) {
