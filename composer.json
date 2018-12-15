@@ -19,9 +19,12 @@
         "symfony/yaml"         : "^3.3",
         "symfony/cache"        : "3.3.4",
         "vlucas/valitron"      : "1.2.4",
+        "zeuxisoo/slim-whoops" : "0.6.*",
+        "yarec/graphql-client" : "dev-master",
         "crysalead/dir"        : "^2.0",
         "guzzlehttp/guzzle"    : "~6.0",
         "doctrine/orm"         : "2.5.6",
-        "monolog/monolog"      : "1.23.0"
+        "monolog/monolog"      : "1.23.0",
+        "symfony/var-dumper"   : "^3.3"
     }
 }

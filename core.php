@@ -4363,13 +4363,13 @@ $cx = rest::putData($afn, $ms['id']);
 ret($cx);
 });
 }
-function getHotColMap1($afn)
+function getHotColMap1($afn, $cg = array())
 {
 $afr = $afn . '_param';
 $afs = $afn . '_opt';
 $aft = $afn . '_opt_ext';
 ctx::pagesize(50);
-$cx = rest::getList($afr);
+$cx = rest::getList($afr, $cg);
 $afu = getKeyValues($cx['data'], 'id');
 $az = indexArray($cx['data'], 'id');
 $cg = db::all($afs, ['AND' => ['pid' => $afu]]);
