@@ -26,6 +26,7 @@
         "doctrine/orm"         : "2.5.6",
         "monolog/monolog"      : "1.23.0",
         "symfony/var-dumper"   : "^3.3",
+        "ptlis/shell-command"  : "^0.13.0",
         "jdorn/sql-formatter"  : "1.2.17"
     }
 }
