@@ -3308,6 +3308,10 @@ $qt = array($jz => array($fj));
 }
 code($qt, $ty);
 }
+function response($bc = array(), $fj = 0, $jz = '')
+{
+ret($bc, $fj, $jz);
+}
 function err($tz)
 {
 code($tz, 1);
