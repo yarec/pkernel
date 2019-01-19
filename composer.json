@@ -1,7 +1,7 @@
 {
     "name": "yarec/pkernel",
     "description": "...",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "type": "library",
     "license": "MIT",
     "authors": [
