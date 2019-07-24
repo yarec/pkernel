@@ -699,6 +699,9 @@ if ($cn == 'domain') {
 $co = self::get_dbc_domain_key();
 $cp = self::get_dbc_domain_map();
 $m = $cp[$co];
+if (!$m) {
+ret(1, 'domain key error');
+}
 }
 }
 return $m;
