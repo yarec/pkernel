@@ -2516,7 +2516,11 @@ if ($ak) {
 $ak['username'] = $ak[$ce];
 $mq = ['user' => $ak];
 extract(cache_user($aw, $mq));
-$ay = select_keys([$ce], $ak);
+$dw = \cfg::get('login_userinfo_cols');
+if (!$dw) {
+$dw = [$ce];
+}
+$ay = select_keys($dw, $ak);
 }
 }
 }
@@ -3878,7 +3882,7 @@ return $adi;
 function gen_dbc_schema($acq)
 {
 $adj = \db::dbc();
-$acp = ['driver' => 'pdo_mysql', 'host' => $adj['server'], 'user' => $adj['username'], 'password' => $adj['password'], 'dbname' => $adj['database_name']];
+$acp = ['driver' => 'pdo_mysql', 'host' => $adj['server'], 'port' => $adj['port'], 'user' => $adj['username'], 'password' => $adj['password'], 'dbname' => $adj['database_name']];
 $acr = get('write', false);
 $adk = get('force', false);
 $adg = gen_schema($acp, $acq, $acr, $adk);
