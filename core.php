@@ -708,9 +708,11 @@ return $m;
 }
 public static function get_dbc_domain_key()
 {
-$k = 'ddk_';
+$k = get('dk');
+if (!$k) {
 if (isset($_SERVER['HTTP_HOST'])) {
 $k .= $_SERVER['HTTP_HOST'];
+}
 }
 return $k;
 }
