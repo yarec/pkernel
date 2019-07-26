@@ -1879,7 +1879,8 @@ $ir = " from {$bu} t1\n                              {$hx}\n                    
 }
 } else {
 $is = $im;
-if (RestHelper::isAdmin()) {
+if (isset($cg['force_ar']) || RestHelper::isAdmin() && $ik) {
+} else {
 if ($bu == RestHelper::user_tbl()) {
 $is = "t1.id={$be}";
 }
