@@ -2529,6 +2529,11 @@ if (!$dx) {
 $dx = [$cf];
 }
 $az = select_keys($dx, $ak);
+$bk = \cfg::get('disable_cache_user');
+if ($bk) {
+$ab = ['id' => $ak['id'], 'token' => $ax];
+\db::save($be, $ab);
+}
 }
 }
 }
