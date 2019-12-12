@@ -13,7 +13,7 @@
     "require": {
         "slim/slim"            : "~3.3",
         "pavlakis/slim-cli"    : "^1.0",
-        "catfan/medoo"         : "~1.0",
+        "catfan/medoo"         : "1.7.7",
         "symfony/class-loader" : "2.8.1",
         "symfony/config"       : "3.0.1",
         "symfony/yaml"         : "^3.3",
